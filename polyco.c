@@ -45,7 +45,7 @@ int MPolyCo(double *a, int adim,
 	if(or == NULL) {
 		return(-1);
 	}
-	rd = ad+1;
+	rd = (ad-1)+(bd-1) + 1;
 
 	/*
 	 * index backwards from polynomial degree
