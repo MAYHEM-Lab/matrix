@@ -41,11 +41,11 @@ int MPolyCo(double *a, int adim,
 		bd = bdim;
 	}
 
-	or = (double *)Malloc((ad+1)*sizeof(double));
+	rd = (ad-1)+(bd-1) + 1;
+	or = (double *)Malloc(rd*sizeof(double));
 	if(or == NULL) {
 		return(-1);
 	}
-	rd = (ad-1)+(bd-1) + 1;
 
 	/*
 	 * index backwards from polynomial degree
