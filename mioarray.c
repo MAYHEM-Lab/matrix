@@ -9,7 +9,7 @@
 
 #include "mioarray.h"
 
-Array2D *MakeArray2D(int xdim, int ydim)
+Array2D *MakeArray2D(int rows, int cols)
 {
 	Array2D *a;
 	MIO *a_mio;
@@ -20,7 +20,7 @@ Array2D *MakeArray2D(int xdim, int ydim)
 		return(NULL);
 	}
 
-	a_mio = MIOMalloc(xdim*ydim*sizeof(double));
+	a_mio = MIOMalloc(rows*cols*sizeof(double));
 	if(a_mio == NULL) {
 		Free(a);
 		return(NULL);
@@ -29,8 +29,8 @@ Array2D *MakeArray2D(int xdim, int ydim)
 	a->data = (double *)MIOAddr(a_mio);
 	a->mio = a_mio;
 
-	a->xdim = xdim;
-	a->ydim = ydim;
+	a->xdim = cols;
+	a->ydim = rows;
 
 	return(a);
 }
@@ -91,7 +91,7 @@ Array2D *TransposeArray2D(Array2D *a)
 	int i;
 	int j;
 
-	t = MakeArray2D(a->ydim,a->xdim);
+	t = MakeArray2D(a->xdim,a->ydim);
 	if(t == NULL)
 	{
 		return(NULL);
@@ -302,7 +302,7 @@ Array2D *MultiplyArray2D(Array2D *a, Array2D *b)
 	new_r = a->ydim;
 	new_c = b->xdim;
 
-	c = MakeArray2D(new_c,new_r);
+	c = MakeArray2D(new_r,new_c);
 	if(c == NULL)
 	{
 		return(NULL);
