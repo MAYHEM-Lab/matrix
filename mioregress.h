@@ -4,7 +4,7 @@
 #include "mio.h"
 #include "mioarray.h"
 
-Array1D *Regress(Array2D *x, Array2D *y);
+Array1D *RegressMatrix2D(Array2D *x, Array2D *y);
 
 
 #endif

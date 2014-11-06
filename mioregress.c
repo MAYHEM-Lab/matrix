@@ -13,7 +13,7 @@
  *
  * B = (X^tX)^-1 * X^t * y
  */
-Array1D *Regress(Array2D *x, Array2D *y)
+Array1D *RegressMatrix2D(Array2D *x, Array2D *y)
 {
 	Array1D *B;
 	Array2D *xt; /* x^t */
@@ -98,11 +98,18 @@ int main(int argc, char *argv[])
 	b->data[6] = 2.4;
 
 
-	c = Regress(a,b);
+	c = RegressMatrix2D(a,b);
 	if(c == NULL) {
 		fprintf(stderr,"regress 1 failed\n");
 		exit(1);
 	}
+
+	/*
+	 * answer should be
+	 * c: 	[-2.417108]
+	 *      [0.004698]
+	 */
+
 
 	printf("a: ");
 	PrintArray2D(a);
