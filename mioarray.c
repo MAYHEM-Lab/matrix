@@ -338,8 +338,8 @@ int main(int argc, char *argv[])
 	Array2D *d;
 	Array2D *e;
 
-	a = MakeArray2D(5,3);
-	b = MakeArray2D(3,5);
+	a = MakeArray2D(3,5);
+	b = MakeArray2D(5,3);
 
 	for(i=0; i < 3; i++)
 	{
