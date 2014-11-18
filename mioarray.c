@@ -326,6 +326,78 @@ Array2D *MultiplyArray2D(Array2D *a, Array2D *b)
 	return(c);
 }
 
+Array2D *AddArray2D(Array2D *a, Array2D *b)
+{
+	int i;
+	int j;
+	int cols;
+	int rows;
+	Array2D *Sum;
+
+	if(a->ydim != b->ydim) {
+		return(NULL);
+	}
+
+	if(a->xdim != b->xdim) {
+		return(NULL);
+	}
+
+	rows = a->ydim;
+	cols = a->xdim;
+
+	Sum = MakeArray2D(rows,cols);
+
+	if(Sum == NULL) {
+		return(NULL);
+	}
+
+	for(i=0; i < rows; i++) {
+		for(j=0; j < cols; j++) {
+			Sum->data[i*cols+j] = 
+				a->data[i*cols+j] +
+				b->data[i*cols+j];
+		}
+	}
+
+	return(Sum);
+}
+			
+Array2D *SubtractArray2D(Array2D *a, Array2D *b)
+{
+	int i;
+	int j;
+	int cols;
+	int rows;
+	Array2D *Diff;
+
+	if(a->ydim != b->ydim) {
+		return(NULL);
+	}
+
+	if(a->xdim != b->xdim) {
+		return(NULL);
+	}
+
+	rows = a->ydim;
+	cols = a->xdim;
+
+	Diff = MakeArray2D(rows,cols);
+
+	if(Diff == NULL) {
+		return(NULL);
+	}
+
+	for(i=0; i < rows; i++) {
+		for(j=0; j < cols; j++) {
+			Diff->data[i*cols+j] = 
+				a->data[i*cols+j] -
+				b->data[i*cols+j];
+		}
+	}
+
+	return(Diff);
+}
+
 #ifdef STANDALONE
 
 int main(int argc, char *argv[])

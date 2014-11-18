@@ -19,7 +19,8 @@ Array2D *CopyArray2D(Array2D *a);
 Array2D *TransposeArray2D(Array2D *a);
 Array2D *MultiplyArray2D(Array2D *a, Array2D *b);
 Array2D *InvertArray2D(Array2D *a);
-
+Array2D *AddArray2D(Array2D *a, Array2D *b);
+Array2D *SubtractArray2D(Array2D *a, Array2D *b);
 /*
  * choose 1D to be column vectors
  */

@@ -6,7 +6,7 @@ CFLAGS=-g -I${MPATH} -I${APATH}
 LIBS=${MPATH}/mymalloc.o ${MPATH}/mio.o -lm
 ALIB=${APATH}/mioarray.o
 
-all: polyco-test polyco.o mioarray-test mioregress-test
+all: polyco-test polyco.o mioregress.o mioarray-test mioregress-test
 
 polyco-test: polyco.c polyco.h
 	${CC} ${CFLAGS} -DSTANDALONE -o polyco-test polyco.c ${LIBS}
@@ -22,6 +22,8 @@ mioarray-test: mioarray.c mioarray.h
 
 mioregress-test: mioregress.c mioregress.h ${APATH}/mioarray.h ${APATH}/mioarray.o
 	${CC} ${CFLAGS} -DSTANDALONE -o mioregress-test mioregress.c ${ALIB} ${LIBS}
+mioregress.o.o: mioregress.o.c mioregress.o.h mioarray.h
+	${CC} ${CFLAGS} -c mioregress.c
 
 clean:
 	rm *.o polyco-test 
