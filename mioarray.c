@@ -71,7 +71,7 @@ Array2D *CopyArray2D(Array2D *a)
 	Array2D *b;
 	int i;
 
-	b = MakeArray2D(a->xdim,a->ydim);
+	b = MakeArray2D(a->ydim,a->xdim);
 	if(b == NULL)
 	{
 		return(NULL);
