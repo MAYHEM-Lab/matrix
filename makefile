@@ -28,6 +28,7 @@ mioregress-test: mioregress.c mioregress.h ${APATH}/mioarray.h ${APATH}/mioarray
 
 mioregress.o: mioregress.c mioregress.h mioarray.h
 	${CC} ${CFLAGS} -DUSELAPACK -c mioregress.c
+#	${CC} ${CFLAGS} -c mioregress.c
 
 clean:
 	rm *.o polyco-test 
