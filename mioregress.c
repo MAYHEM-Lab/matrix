@@ -7,6 +7,7 @@
 #include "mioarray.h"
 
 
+#ifndef USELAPACK
 /*
  * normal equations are
  * X^tXB = X^ty
@@ -59,6 +60,72 @@ Array1D *RegressMatrix2D(Array2D *x, Array2D *y)
 
 	return(B);
 }
+
+#else
+
+#include "lapacke.h"
+
+/*
+ * from http://www.netlib.org/lapack/lapacke.html#_calling_code_dgels_code
+ */
+
+Array1D *RegressMatrix2D(Array2D *x, Array2D *y)
+{
+	Array1D *B;
+	int i;
+	char trans = 'N';
+	lapack_int m;
+	lapack_int n;
+	lapack_int nrhs;
+	lapack_int lda;
+	lapack_int ldb;
+	lapack_int info;
+
+	m = x->ydim;
+	n = x->xdim;
+	nrhs = 1;
+
+	/*
+	 * in row major order, lda is the number of values that separate two elements in the same
+	 * column
+	 */
+	lda = n;
+	ldb = 1;
+
+	B = MakeArray1D(y->ydim);
+	if(B == NULL) {
+		return(NULL);
+	}
+
+	/*
+	 * dgels destroys the input B vector
+	 */
+	for(i=0; i < B->ydim; i++) {
+		B->data[i] = y->data[i];
+	}
+
+	info = LAPACKE_dgels(LAPACK_COL_MAJOR,'N',m,n,nrhs,
+					x->data,lda,B->data,ldb);
+	if(info != 0) {
+		fprintf(stderr,"LAPACK error in regression\n");
+		FreeArray1D(B);
+		return(NULL);
+	}
+
+	/*
+            On exit, if INFO = 0, B is overwritten by the solution   
+            vectors, stored columnwise:   
+            if TRANS = 'N' and m >= n, rows 1 to n of B contain the least   
+            squares solution vectors; the residual sum of squares for the   
+            solution in each column is given by the sum of squares of   
+            elements N+1 to M in that column;
+	*/
+
+	B->ydim = n;
+
+	return(B);
+}
+#endif
 	
 
 #ifdef STANDALONE
