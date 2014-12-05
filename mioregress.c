@@ -7,14 +7,13 @@
 #include "mioarray.h"
 
 
-#ifndef USELAPACK
 /*
  * normal equations are
  * X^tXB = X^ty
  *
  * B = (X^tX)^-1 * X^t * y
  */
-Array1D *RegressMatrix2D(Array2D *x, Array2D *y)
+Array1D *RegressMatrix2DSimple(Array2D *x, Array2D *y)
 {
 	Array1D *B;
 	Array2D *xt; /* x^t */
@@ -61,6 +60,13 @@ Array1D *RegressMatrix2D(Array2D *x, Array2D *y)
 	return(B);
 }
 
+#ifndef USELAPACK
+
+Array1D *RegressMatrix2D(Array2D *x, Array2D *y)
+{
+	return(RegressMatrix2DSimple(x,y));
+}
+
 #else
 
 #include "lapacke.h"
@@ -80,6 +86,7 @@ Array1D *RegressMatrix2D(Array2D *x, Array2D *y)
 	lapack_int lda;
 	lapack_int ldb;
 	lapack_int info;
+	int ndx;
 
 	m = x->ydim;
 	n = x->xdim;
@@ -90,7 +97,7 @@ Array1D *RegressMatrix2D(Array2D *x, Array2D *y)
 	 * column
 	 */
 	lda = n;
-	ldb = 1;
+	ldb = y->xdim;
 
 	B = MakeArray1D(y->ydim);
 	if(B == NULL) {
@@ -104,10 +111,14 @@ Array1D *RegressMatrix2D(Array2D *x, Array2D *y)
 		B->data[i] = y->data[i];
 	}
 
-	info = LAPACKE_dgels(LAPACK_COL_MAJOR,'N',m,n,nrhs,
+	info = LAPACKE_dgels(LAPACK_ROW_MAJOR,'N',m,n,nrhs,
 					x->data,lda,B->data,ldb);
 	if(info != 0) {
-		fprintf(stderr,"LAPACK error in regression\n");
+		fprintf(stderr,"LAPACK error in regression: %d\n",
+			info);
+		ndx = fabs(info) - 1;
+		fprintf(stderr,"x[%d]: %f, y[%d]: %f\n",
+			ndx,x->data[ndx],ndx,y->data[ndx]);
 		FreeArray1D(B);
 		return(NULL);
 	}
