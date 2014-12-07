@@ -146,8 +146,10 @@ int main(int argc, char *argv[])
 	int i;
 	int j;
 	Array2D *a;
+	Array2D *ac;
 	Array2D *b;
 	Array2D *c;
+	Array2D *d;
 
 	a = MakeArray2D(7,2);
 	b = MakeArray2D(7,1);
@@ -196,9 +198,46 @@ int main(int argc, char *argv[])
 	printf("c: ");
 	PrintArray2D(c);
 
+	printf("\n");
+
 	FreeArray2D(a);
 	FreeArray2D(b);
 	FreeArray2D(c);
+
+	/*
+	 * now test matrix multiply
+	 */
+	a = MakeArray2D(2,2);
+	b = MakeArray2D(2,1);
+
+	a->data[0*2+0] = 1.5;
+	a->data[0*2+1] = 2.5;
+	b->data[0] = 5.0;
+
+	a->data[1*2+0] = 3.5;
+	a->data[1*2+1] = 4.0;
+	b->data[1] = 7.0;
+
+	ac = CopyArray2D(a);
+	c = RegressMatrix2D(a,b);
+	d = MultiplyArray2D(ac,c);
+
+	printf("a: ");
+	PrintArray2D(a);
+	printf("b: ");
+	PrintArray2D(b);
+	printf("c: ");
+	PrintArray2D(c);
+	printf("d: ");
+	PrintArray2D(d);
+
+
+	FreeArray2D(a);
+	FreeArray2D(b);
+	FreeArray2D(c);
+	FreeArray2D(d);
+	
+	
 	return(0);
 }
 

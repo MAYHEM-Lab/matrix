@@ -114,6 +114,7 @@ Array2D *TransposeArray2D(Array2D *a)
 /*
  * adapted from Gauss-Jordon w/o pivoting
  */
+#ifndef USELAPACK
 Array2D *InvertArray2D(Array2D *a)
 {
 	int i;
@@ -281,6 +282,71 @@ Array2D *InvertArray2D(Array2D *a)
 	}
 
 }
+
+#else
+
+#include "lapacke.h"
+
+Array2D *InvertArray2D(Array2D *a)
+{
+	Array2D *result;
+	MIO *i_mio;
+	lapack_int *ipiv;
+	lapack_int lda;
+	lapack_int m;
+	lapack_int n;
+	lapack_int info;
+
+	result = CopyArray2D(a); /* these routines are destructive */
+	if(result == NULL) {
+		return(NULL);
+	}
+
+	i_mio = MIOMalloc(a->ydim*sizeof(lapack_int));
+	if(i_mio == NULL) {
+		FreeArray2D(result);
+		return(NULL);
+	}
+	ipiv = (lapack_int *)MIOAddr(i_mio);
+
+	lda = a->xdim;
+	m = a->ydim;
+	n = a->xdim;
+
+	info = LAPACKE_dgetrf(LAPACK_ROW_MAJOR,m,n,result->data,lda,
+				ipiv);
+
+	if(info != 0) {
+		fprintf(stderr,
+		"lapacke_dgetrf failed: %d\n",info);
+		FreeArray2D(result);
+		MIOClose(i_mio);
+		return(NULL);
+	}
+
+	info = LAPACKE_dgetri(LAPACK_ROW_MAJOR,n,result->data,lda,ipiv);
+
+	if(info != 0) {
+		fprintf(stderr,
+		"lapacke_dgetri inverse failed: %d\n",info);
+		FreeArray2D(result);
+		MIOClose(i_mio);
+		return(NULL);
+	}
+
+	MIOClose(i_mio);
+
+	/*
+	 * transpose the result
+	 */
+	result->ydim = (int)n;
+	result->xdim = (int)m;
+
+	return(result);
+}
+
+	
+#endif
 
 Array2D *MultiplyArray2D(Array2D *a, Array2D *b)
 {
