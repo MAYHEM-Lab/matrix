@@ -9,6 +9,7 @@
 
 #include "mioarray.h"
 
+
 Array2D *MakeArray2D(int rows, int cols)
 {
 	Array2D *a;
@@ -31,6 +32,25 @@ Array2D *MakeArray2D(int rows, int cols)
 
 	a->xdim = cols;
 	a->ydim = rows;
+
+	return(a);
+}
+
+Array2D *MakeArray2DFromMIO(MIO *a_mio)
+{
+	Array2D *a;
+
+	a = (Array2D *)Malloc(sizeof(Array2D));
+	if(a == NULL)
+	{
+		return(NULL);
+	}
+
+	a->data = (double *)MIOAddr(a_mio);
+	a->mio = a_mio;
+
+	a->xdim = a_mio->fields;
+	a->ydim = (int)a_mio->recs;
 
 	return(a);
 }
