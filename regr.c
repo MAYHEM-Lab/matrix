@@ -32,7 +32,7 @@ double RSquared(Array2D *x, Array2D *b, Array2D *y)
 	for(i=0; i < f->ydim; i++) {
 		temp = (y->data[i*y->xdim+0] -
 			   f->data[i*f->xdim+0]);
-		ss_res += temp*temp;
+		ss_res += (temp*temp);
 	}
 
 	y_bar = 0;
@@ -42,10 +42,10 @@ double RSquared(Array2D *x, Array2D *b, Array2D *y)
 	y_bar = y_bar / (double)(y->ydim);
 
 	ss_total = 0;
-	for(i=0; i < f->ydim; i++) {
-		temp = (f->data[i*f->xdim+0] -
+	for(i=0; i < y->ydim; i++) {
+		temp = (y->data[i*y->xdim+0] -
 			y_bar);
-		ss_total += temp*temp;
+		ss_total += (temp*temp);
 	}
 
 	rsq = 1 - (ss_res / ss_total);
