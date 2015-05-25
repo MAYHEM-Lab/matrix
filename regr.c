@@ -13,6 +13,49 @@ char *Usage = "usage: regr -x xfile\n\
 char Xfile[4096];
 char Yfile[4096];
 
+double RSquared(Array2D *x, Array2D *b, Array2D *y)
+{
+	Array2D *f;
+	int i;
+	double ss_res;
+	double ss_total;
+	double y_bar;
+	double temp;
+	double rsq;
+
+	f = MultiplyArray2D(x,b);
+	if(f == NULL) {
+		return(-1.0);
+	}
+
+	ss_res = 0;
+	for(i=0; i < f->ydim; i++) {
+		temp = (y->data[i*y->xdim+0] -
+			   f->data[i*f->xdim+0]);
+		ss_res += temp*temp;
+	}
+
+	y_bar = 0;
+	for(i=0; i < y->ydim; i++) {
+		y_bar += y->data[i*y->xdim+0];
+	}
+	y_bar = y_bar / (double)(y->ydim);
+
+	ss_total = 0;
+	for(i=0; i < f->ydim; i++) {
+		temp = (f->data[i*f->xdim+0] -
+			y_bar);
+		ss_total += temp*temp;
+	}
+
+	rsq = 1 - (ss_res / ss_total);
+
+	FreeArray2D(f);
+
+	return(rsq);
+}
+
+	
 
 int main(int argc, char *argv[])
 {
@@ -21,11 +64,14 @@ int main(int argc, char *argv[])
 	int c;
 	MIO *d_mio;
 	Array2D *x;
+	Array2D *cx;
 	MIO *xmio;
 	Array2D *b;
 	Array2D *y;
 	MIO *ymio;
+	Array2D *f;
 	unsigned long size;
+	double rsq;
 
 	while((c = getopt(argc,argv,ARGS)) != EOF) {
 		switch(c) {
@@ -82,18 +128,32 @@ int main(int argc, char *argv[])
 	x = MakeArray2DFromMIO(xmio);
 	y = MakeArray2DFromMIO(ymio);
 
-	b = RegressMatrix2D(x,y);
+	cx = CopyArray2D(x);
+	if(cx == NULL) {
+		fprintf(stderr,"couldn't make copy of x\n");
+		exit(1);
+	}
+
+	/*
+	 * destructive of x so must use copy
+	 */
+	b = RegressMatrix2D(cx,y);
 	if(b == NULL) {
 		fprintf(stderr,"regression failed\n");
 		exit(1);
 	}
 
+	rsq = RSquared(x,b,y);
+
+
 	printf("b: ");
 	PrintArray2D(b);
 
 	printf("\n");
+	printf("R^2: %f\n",rsq);
 
 	FreeArray2D(x);
+	FreeArray2D(cx);
 	FreeArray2D(y);
 	FreeArray2D(b);
 
