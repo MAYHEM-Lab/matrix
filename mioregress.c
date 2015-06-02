@@ -116,7 +116,7 @@ Array1D *RegressMatrix2D(Array2D *x, Array2D *y)
 	if(info != 0) {
 		fprintf(stderr,"LAPACK error in regression: %d\n",
 			info);
-		ndx = fabs(info) - 1;
+		ndx = fabs((double)info) - 1;
 		fprintf(stderr,"x[%d]: %f, y[%d]: %f\n",
 			ndx,x->data[ndx],ndx,y->data[ndx]);
 		FreeArray1D(B);

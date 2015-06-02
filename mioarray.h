@@ -22,6 +22,11 @@ Array2D *MultiplyArray2D(Array2D *a, Array2D *b);
 Array2D *InvertArray2D(Array2D *a);
 Array2D *AddArray2D(Array2D *a, Array2D *b);
 Array2D *SubtractArray2D(Array2D *a, Array2D *b);
+Array2D *NormalizeRowsArray2D(Array2D *a);
+Array2D *NormalizeColsArray2D(Array2D *a);
+
+Array2D *EigenVectorArray2D(Array2D *a);
+
 /*
  * choose 1D to be column vectors
  */
