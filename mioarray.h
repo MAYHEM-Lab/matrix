@@ -39,5 +39,6 @@ Array2D *EigenVectorArray2D(Array2D *a);
 #define CopyArray1D(a) CopyArray2D(a)
 #define TransposeArray1D(a) TransposeArray2D(a)
 
+Array1D *EigenValueArray2D(Array2D *a);
 #endif
 

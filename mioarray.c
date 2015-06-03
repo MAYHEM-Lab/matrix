@@ -308,6 +308,12 @@ Array2D *EigenVectorArray2D(Array2D *a)
 	fprintf(stderr,"EigenVectorArray2D not implemented\n");
 	return(NULL);
 }
+
+Array1D *EigenValueArray2D(Array2D *a)
+{
+	fprintf(stderr,"EigenValueArray2D not implemented\n");
+	return(NULL);
+}
 #else
 
 #include "lapacke.h"
@@ -368,6 +374,102 @@ Array2D *InvertArray2D(Array2D *a)
 	result->xdim = (int)m;
 
 	return(result);
+}
+
+Array1D *EigenValueArray2D(Array2D *a)
+{
+	/*
+	 * use DGHERD, DHSEQR, and DHSEIN to compute eigenvector of a
+	 */ 
+	lapack_int info;
+	lapack_int n;
+	lapack_int ilo;
+	lapack_int ihi;
+	lapack_int lda;
+	double *tau;
+	Array2D *wr;
+	double *wi;
+	Array2D *tempa;
+	double *z;
+
+	tempa = CopyArray2D(a);
+	if(tempa == NULL) {
+		return(NULL);
+	}
+
+	n = a->ydim;
+	lda = a->xdim;
+	ilo = 1;
+	ihi = n;
+	tau = Malloc(n*sizeof(double));
+	if(tau == NULL) {
+		FreeArray2D(tempa);
+		return(NULL);
+	}
+
+	/*
+	 * call dgehrd to get Hessenberg in upper triangle
+	 */
+	info = LAPACKE_dgehrd(LAPACK_ROW_MAJOR,
+			      n,ilo,ihi,
+			      tempa->data,lda,
+			      tau);
+
+	if(info < 0) {
+		fprintf(stderr,"lapacke_dgehrd failed: %d\n",
+			info);
+		FreeArray2D(tempa);
+		Free(tau);
+		return(NULL);
+	}
+
+	/*
+	 * get eigenvalues from Schur transformation
+	 */
+	wr = MakeArray1D(a->ydim);
+	if(wr == NULL) {
+		FreeArray2D(tempa);
+		Free(tau);
+		return(NULL);
+	}
+	wi = Malloc(n*sizeof(double));
+	if(wi == NULL) {
+		FreeArray2D(tempa);
+		Free(tau);
+		FreeArray1D(wr);
+		return(NULL);
+	}
+
+	z = (double *)Malloc(n*n*sizeof(double));
+	if(z == NULL) {
+		FreeArray2D(tempa);
+		Free(tau);
+		FreeArray1D(wr);
+		Free(wi);
+		return(NULL);
+	}
+			
+	info = LAPACKE_dhseqr(LAPACK_ROW_MAJOR,
+			      'E','N',n,ilo,ihi,
+			      tempa->data,lda,
+			      wr->data,wi,z,n);
+	if(info < 0) {
+		fprintf(stderr,"lapacke_dhseqr failed: %d\n",
+			info);
+		FreeArray2D(tempa);
+		Free(tau);
+		Free(wi);
+		FreeArray1D(wr);
+		Free(z);
+		return(NULL);
+	}
+
+	FreeArray2D(tempa);
+	Free(tau);
+	Free(wi);
+	Free(z);
+
+	return(wr);
 }
 
 Array2D *EigenVectorArray2D(Array2D *a)
@@ -478,11 +580,6 @@ Array2D *EigenVectorArray2D(Array2D *a)
 		return(NULL);
 	}
 
-printf("eigenvalues\n");
-for(i=0; i < n; i++) {
-	printf("%f\n",wr[i]);
-}
-
 	/*
 	use HSEIN to compute eigen vectors of H and then ormhr to
 	multiply by Q (in the decomposed form returned by dgehdr)
@@ -493,6 +590,10 @@ for(i=0; i < n; i++) {
 	 * shur transform destroys hessenberg in tempa
 	 */
 	FreeArray2D(tempa);
+
+	/*
+	 * upper triangle of Q (output from dgehrd) is hessenberg
+	 */
 	tempa = CopyArray2D(Q);
 	if(tempa == NULL) {
 		FreeArray2D(Q);
@@ -565,7 +666,7 @@ for(i=0; i < n; i++) {
 				'R','Q','N',
 				select,n,tempa->data,lda,
 			wr,wi,z,n,eigen->data,eigen->xdim,eigen->xdim,&m,
-				ifailr,ifailr);
+				NULL,ifailr);
 	if(info < 0) {
 		fprintf(stderr,"lapacke_dhsein failed: %d\n",info);
 		FreeArray2D(tempa);

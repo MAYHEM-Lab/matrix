@@ -15,6 +15,7 @@ int main(int argc, char *argv[])
 	Array2D *b;
 	Array2D *c;
 	Array2D *ct;
+	Array1D *ev;
 	Array2D *temp;
 	Array2D *temp1;
 
@@ -61,12 +62,17 @@ int main(int argc, char *argv[])
 	printf("ct*a*c:");
 	PrintArray2D(temp1);
 
+	ev = EigenValueArray2D(a);
+	printf("ev: ");
+	PrintArray1D(ev);
+
 
 	FreeArray2D(a);
 	FreeArray2D(b);
 	FreeArray2D(c);
 	FreeArray2D(temp);
 	FreeArray2D(temp1);
+	FreeArray1D(ev);
 
 	return(0);
 }

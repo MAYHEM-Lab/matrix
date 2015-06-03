@@ -9,7 +9,7 @@ ALIB=${APATH}/mioarray.o
 
 LLIB=-L./lapack-3.5.0 -L/usr/local/Cellar/gcc/4.9.2_1/lib/gcc/4.9/ -llapacke -llapack -lrefblas -ltmglib -lgfortran
 
-all: polyco-test polyco.o mioregress.o mioarray-test mioregress-test regr
+all: polyco-test polyco.o mioregress.o mioarray-test mioregress-test regr mioeigen-test pca
 
 polyco-test: polyco.c polyco.h
 	${CC} ${CFLAGS} -DSTANDALONE -o polyco-test polyco.c ${LIBS}
@@ -32,6 +32,14 @@ mioregress-test: mioregress.c mioregress.h ${APATH}/mioarray.h ${APATH}/mioarray
 regr: regr.c mioregress.h ${APATH}/mioarray.h ${APATH}/mioarray.o mioregress.o
 #	${CC} ${CFLAGS} -o regr regr.c mioregress.o ${ALIB} ${LIBS} ${LLIB}
 	${CC} ${CFLAGS} -DUSELAPACK -o regr regr.c mioregress.o ${ALIB} ${LIBS} ${LLIB}
+
+pca: pca.c ${APATH}/mioarray.h ${APATH}/mioarray.o
+#	${CC} ${CFLAGS} -DSTANDALONE -o pca pca.c ${ALIB} ${LIBS} ${LLIB}
+	${CC} ${CFLAGS} -DSTANDALONE -DUSELAPACK -o pca pca.c ${ALIB} ${LIBS} ${LLIB}
+
+mioeigen-test: ${APATH}/mioarray.h ${APATH}/mioarray.o mioeigen-test.c
+#	${CC} ${CFLAGS} -o mioeigen-test mioeigen-test.c ${ALIB} ${LIBS} ${LLIB}
+	${CC} ${CFLAGS} -DUSELAPACK -o mioeigen-test mioeigen-test.c ${ALIB} ${LIBS} ${LLIB}
 
 mioregress.o: mioregress.c mioregress.h mioarray.h
 	${CC} ${CFLAGS} -DUSELAPACK -c mioregress.c
