@@ -7,6 +7,167 @@
 #include "mioarray.h"
 
 
+double RSquared(Array2D *x, Array2D *b, Array2D *y)
+{
+	Array2D *f;
+	int i;
+	double ss_res;
+	double ss_reg;
+	double ss_total;
+	double y_bar;
+	double temp;
+	double rsq;
+
+	f = MultiplyArray2D(x,b);
+	if(f == NULL) {
+		return(-1.0);
+	}
+
+	ss_res = 0;
+	for(i=0; i < f->ydim; i++) {
+		temp = (y->data[i*y->xdim+0] -
+			   f->data[i*f->xdim+0]);
+		ss_res += (temp*temp);
+	}
+
+	y_bar = 0;
+	for(i=0; i < y->ydim; i++) {
+		y_bar += y->data[i*y->xdim+0];
+	}
+	y_bar = y_bar / (double)(y->ydim);
+
+	ss_reg = 0;
+	for(i=0; i < f->ydim; i++) {
+		temp = (y_bar -
+			   f->data[i*f->xdim+0]);
+		ss_reg += (temp*temp);
+	}
+
+	ss_total = ss_reg + ss_res;
+
+	rsq = 1 - (ss_res / ss_total);
+
+	FreeArray2D(f);
+
+	return(rsq);
+}
+
+double RMSE(Array2D *x, Array2D *b, Array2D *y)
+{
+	Array2D *f;
+	int i;
+	double ss_res;
+	double temp;
+	double rmse;
+	double count;
+
+	f = MultiplyArray2D(x,b);
+	if(f == NULL) {
+		return(-1.0);
+	}
+
+	ss_res = 0;
+	count = 0;
+	for(i=0; i < f->ydim; i++) {
+		temp = (y->data[i*y->xdim+0] -
+			   f->data[i*f->xdim+0]);
+		ss_res += (temp*temp);
+		count++;
+	}
+
+	rmse = sqrt(ss_res/count);
+
+	FreeArray2D(f);
+
+	return(rmse);
+}
+
+double RSquaredOld(Array2D *x, Array2D *b, Array2D *y)
+{
+	Array2D *f;
+	int i;
+	double ss_res;
+	double ss_total;
+	double y_bar;
+	double temp;
+	double rsq;
+
+	f = MultiplyArray2D(x,b);
+	if(f == NULL) {
+		return(-1.0);
+	}
+
+	ss_res = 0;
+	for(i=0; i < f->ydim; i++) {
+		temp = (y->data[i*y->xdim+0] -
+			   f->data[i*f->xdim+0]);
+		ss_res += (temp*temp);
+	}
+
+	y_bar = 0;
+	for(i=0; i < y->ydim; i++) {
+		y_bar += y->data[i*y->xdim+0];
+	}
+	y_bar = y_bar / (double)(y->ydim);
+
+	ss_total = 0;
+	for(i=0; i < y->ydim; i++) {
+		temp = (y->data[i*y->xdim+0] -
+			y_bar);
+		ss_total += (temp*temp);
+	}
+
+	rsq = 1 - (ss_res / ss_total);
+
+	FreeArray2D(f);
+
+	return(rsq);
+}
+
+Array2D *CenterScale(Array2D *x)
+{
+	Array2D *sx;
+	double mu;
+	double sigma;
+	double acc;
+	double count;
+	int i;
+	int j;
+
+	sx = MakeArray2D(2,x->xdim);
+	if(sx == NULL) {
+		return(NULL);
+	}
+
+	for(j=0; j < x->xdim; j++) {
+		acc = 0;
+		count = 0;
+		for(i=0; i < x->ydim; i++) {
+			acc += x->data[i*x->xdim+j];
+			count++;
+		}
+		mu = acc / count;
+		acc = 0;
+		count = 0;
+		for(i=0; i < x->ydim; i++) {
+			acc += ((x->data[i*x->xdim+j] - mu) *
+				(x->data[i*x->xdim+j] - mu));
+			count++;
+		}
+		sigma = sqrt(acc / count);
+		/*
+		 * first row is mu
+		 * second row is sigma
+		 */
+		sx->data[0*sx->xdim+j] = mu;
+		sx->data[1*sx->xdim+j] = sigma;
+	}
+
+	return(sx);
+}
+
+
+
 /*
  * normal equations are
  * X^tXB = X^ty
