@@ -5,6 +5,7 @@
 #include <math.h>
 
 #include "mioregress.h"
+#include "redblack.h"
 
 Array2D *VarCoVarArray2D(Array2D *x)
 {
@@ -59,7 +60,113 @@ Array2D *VarCoVarArray2D(Array2D *x)
 	return(vcv);
 }
 
-Array2D *PCArray2D(Array2D *x)
+int PrincipalComponents(Array2D *x, Array2D **out_u, Array2D **out_ev)
+{
+	Array2D *vcv;
+	Array2D *eigen;
+	Array2D *u;
+	Array2D *new_u;
+	Array2D *ev;
+	Array2D *new_ev;
+	int curr;
+	RB *list;
+	RB *rb;
+	int i;
+	int j;
+
+	vcv = VarCoVarArray2D(x);
+	if(vcv == NULL) {
+		return(-1);
+	}
+	eigen = EigenVectorArray2D(vcv);
+	if(eigen == NULL) {
+		FreeArray2D(vcv);
+		return(-1);
+	}
+
+	ev = EigenValueArray2D(vcv);
+	if(ev == NULL) {
+		FreeArray2D(vcv);
+		FreeArray2D(eigen);
+		return(-1);
+	}
+
+	u = NormalizeColsArray2D(eigen);
+	if(u == NULL) {
+		FreeArray2D(vcv);
+		FreeArray2D(eigen);
+		FreeArray2D(ev);
+		return(-1);
+	}
+
+	/*
+	 * sort by eigen value
+	 */
+	list = RBInitD();
+	if(list == NULL) {
+		FreeArray2D(vcv);
+		FreeArray2D(eigen);
+		FreeArray2D(u);
+		FreeArray2D(ev);
+		return(-1);
+	}
+	for(i=0; i < ev->ydim; i++) {
+		RBInsertD(list,ev->data[i*ev->xdim+0],
+				(Hval)i);
+	}
+
+	/*
+	 * make space for sorted eigenvectors
+	 */
+	new_u = MakeArray2D(u->ydim,u->xdim);
+	if(new_u == NULL) {
+		FreeArray2D(vcv);
+		FreeArray2D(eigen);
+		FreeArray2D(u);
+		RBDestroyD(list);
+		FreeArray2D(ev);
+		return(-1);
+	}
+
+	/*
+	 * make space for sorted eigenvalue
+	 */
+	new_ev = MakeArray2D(ev->ydim,ev->xdim);
+	if(ev == NULL) {
+		FreeArray2D(vcv);
+		FreeArray2D(eigen);
+		FreeArray2D(new_u);
+		FreeArray2D(u);
+		RBDestroyD(list);
+		FreeArray2D(ev);
+		return(-1);
+	}
+
+	/*
+	 * walk the list reordering
+	 */
+	curr = 0;
+	RB_BACKWARD(list,rb) {
+		i = rb->value.i;
+		for(j=0; j < new_u->ydim; j++) {
+			new_u->data[j*new_u->xdim+curr] =
+				u->data[j*u->xdim+i];
+		}
+		new_ev->data[curr*new_ev->xdim+0] = ev->data[i*ev->xdim+0];
+		curr++;
+	}
+		
+	*out_u = new_u;
+	*out_ev = new_ev;
+	FreeArray2D(u);
+	FreeArray2D(eigen);
+	FreeArray2D(vcv);
+	RBDestroyD(list);
+	FreeArray2D(ev);
+	return(1);
+}
+
+Array2D *PCArray(Array2D *x)
 {
 	Array2D *vcv;
 	Array2D *eigen;
@@ -87,15 +194,39 @@ Array2D *PCArray2D(Array2D *x)
 	return(u);
 }
 
+int SignificantEV(Array2D *ev)
+{
+	/*
+	 * sum of first ev constitutes 85% of variance
+	 * assumes that data has been centered and scaled
+	 */
+	int i;
+	double count;
+	double acc;
+
+	count = (double)ev->ydim;
+	acc = 0;
+	for(i=0; i < ev->ydim; i++) {
+		acc += ev->data[i*ev->xdim+0]; 
+		if((acc / count) > 0.85) {
+			return(i+1);
+		}
+	}
+
+	return(ev->ydim);
+}
+
 #ifdef STANDALONE
 
-#define ARGS "x:y:EC:"
+#define ARGS "x:y:EC:A"
 char *Usage = "usage: pca -x xfile\n\
+\t-A <automatically exclude co-linear values\n\
 \t-C count <number of components to use>\n\
 \t-E <explain variation>\n";
 
 char Xfile[4096];
 char Yfile[4096];
+int Auto;
 int Explain;
 int Components;
 
@@ -146,8 +277,10 @@ int main(int argc, char *argv[])
 	double rsq;
 	double rmse;
 	double b0;
+	int err;
 
 	Explain = 0;
+	Auto = 0;
 	while((c = getopt(argc,argv,ARGS)) != EOF) {
 		switch(c) {
 			case 'x':
@@ -155,6 +288,9 @@ int main(int argc, char *argv[])
 				break;
 			case 'y':
 				strncpy(Yfile,optarg,sizeof(Yfile));
+				break;
+			case 'A':
+				Auto = 1;
 				break;
 			case 'C':
 				Components = atoi(optarg);
@@ -239,11 +375,13 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	u = PCArray2D(sx);
-	if(u == NULL) {
+	err = PrincipalComponents(sx,&u,&ev);
+	if(err <= 0) {
 		fprintf(stderr,"couldn't get principal components\n");
 		exit(1);
 	}
+
+		
 
 	/*
 	 * measurements are in rows of x
@@ -263,15 +401,14 @@ int main(int argc, char *argv[])
 	}
 	*/
 
+	if(Auto == 1) {
+		Components = SignificantEV(ev);
+	}
+
 	if(Explain == 1) {
 		vcv = VarCoVarArray2D(sx);
 		if(vcv == NULL) {
 			fprintf(stderr,"couldn't get var-co var matrix\n");
-			exit(1);
-		}
-		ev = EigenValueArray2D(vcv);
-		if(ev == NULL) {
-			fprintf(stderr,"no eigen values for xtx\n");
 			exit(1);
 		}
 		printf("correlation matrix\n");
@@ -290,9 +427,11 @@ int main(int argc, char *argv[])
 			printf("%f ",frac);
 		}
 		printf("\n");
-		FreeArray2D(ev);
+		printf("components: %d\n",Components);
 		FreeArray2D(vcv);
 	}
+
+
 
 	/*
 	 * make data subset for regression
@@ -409,6 +548,7 @@ int main(int argc, char *argv[])
 	FreeArray2D(sx);
 	FreeArray2D(rx);
 	FreeArray2D(b_star);
+	FreeArray2D(ev);
 
 	return(0);
 }
