@@ -102,6 +102,8 @@ int main(int argc, char *argv[])
 	int size;
 	MIO *d_mio;
 	Array2D *x;
+	Array2D *xt;
+	Array2D *xtx;
 	MIO *xmio;
 	Array2D *y;
 	Array2D *ev;
@@ -193,18 +195,37 @@ int main(int argc, char *argv[])
 		printf("\n");
 		acc = 0;
 		for(i=0; i < ev->ydim; i++) {
+			/*
 			acc += (ev->data[i*ev->xdim+0] *
 				ev->data[i*ev->xdim+0]);
+			*/
+			acc += ev->data[i*ev->xdim+0];
 		}
 		printf("varfrac: ");
 		for(i=0; i < ev->ydim; i++) {
+			/*
 			frac = (ev->data[i*ev->xdim+0] *
 				ev->data[i*ev->xdim+0]) / acc;
+			*/
+			frac = ev->data[i*ev->xdim+0] / acc;
 			printf("%f ",frac);
 		}
 		printf("\n");
 		FreeArray2D(ev);
 		FreeArray2D(vcv);
+
+		xt = TransposeArray2D(x);
+		xtx = MultiplyArray2D(xt,x);
+		ev = EigenValueArray2D(xtx);
+		if(ev == NULL) {
+			fprintf(stderr,"no eigen values for xtx\n");
+			exit(1);
+		}
+		printf("eigen values for x^t * x\n");
+		PrintArray1D(ev);
+		FreeArray2D(ev);
+		FreeArray2D(xt);
+		FreeArray2D(xtx);
 	}
 	
 
