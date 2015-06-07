@@ -82,6 +82,36 @@ double RMSE(Array2D *x, Array2D *b, Array2D *y)
 	return(rmse);
 }
 
+Array2D *Resduals(Array2D *x, Array2D *b, Array2D *y)
+{
+	Array2D *f;
+	int i;
+	double temp;
+	Array2D *resid;
+
+	f = MultiplyArray2D(x,b);
+	if(f == NULL) {
+		return(NULL);
+	}
+
+	resid = MakeArray1D(f->ydim);
+	if(resid == NULL) {
+		FreeArray2D(f);
+		return(NULL);
+	}
+
+	for(i=0; i < f->ydim; i++) {
+		temp = (y->data[i*y->xdim+0] -
+			   f->data[i*f->xdim+0]);
+		resid->data[i*resid->xdim+0] = temp;
+	}
+
+
+	FreeArray2D(f);
+
+	return(resid);
+}
+
 double RSquaredOld(Array2D *x, Array2D *b, Array2D *y)
 {
 	Array2D *f;

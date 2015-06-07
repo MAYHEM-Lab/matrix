@@ -218,11 +218,12 @@ int SignificantEV(Array2D *ev)
 
 #ifdef STANDALONE
 
-#define ARGS "x:y:EC:AS"
+#define ARGS "x:y:EC:ASR"
 char *Usage = "usage: pca -x xfile\n\
 \t-A <automatically exclude co-linear values\n\
 \t-C count <number of components to use>\n\
 \t-E <explain variation>\n\
+\t-R <print residuals>\n\
 \t-S <summary only>\n";
 
 char Xfile[4096];
@@ -231,6 +232,7 @@ int Auto;
 int Explain;
 int Components;
 int Summary;
+int Residuals;
 
 double UnscaleB0(double y_bar, Array2D *beta, Array2D *cs)
 {
@@ -277,12 +279,14 @@ int main(int argc, char *argv[])
 	int j;
 	double rsq;
 	double rmse;
+	Array2D *resid;
 	double b0;
 	int err;
 
 	Explain = 0;
 	Auto = 0;
 	Summary = 0;
+	Residuals = 0;
 	while((c = getopt(argc,argv,ARGS)) != EOF) {
 		switch(c) {
 			case 'x':
@@ -299,6 +303,9 @@ int main(int argc, char *argv[])
 				break;
 			case 'E':
 				Explain = 1;
+				break;
+			case 'R':
+				Residuals = 1;
 				break;
 			case 'S':
 				Summary = 1;
@@ -528,8 +535,14 @@ int main(int argc, char *argv[])
         rsq = RSquared(rx,b,y);
 	rmse = RMSE(rx,b,y);
 	printf("R^2: %f RMSE: %f\n",rsq,rmse);
-
-	
+	if(Residuals == 1) {
+		resid = Resduals(rx,b,y);
+		if(resid != NULL) {
+			printf("residuals\n");
+			PrintArray1D(resid);
+			FreeArray1D(resid);
+		}
+	}
 
 	FreeArray2D(u);
 	FreeArray2D(u_s);
