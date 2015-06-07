@@ -218,17 +218,19 @@ int SignificantEV(Array2D *ev)
 
 #ifdef STANDALONE
 
-#define ARGS "x:y:EC:A"
+#define ARGS "x:y:EC:AS"
 char *Usage = "usage: pca -x xfile\n\
 \t-A <automatically exclude co-linear values\n\
 \t-C count <number of components to use>\n\
-\t-E <explain variation>\n";
+\t-E <explain variation>\n\
+\t-S <summary only>\n";
 
 char Xfile[4096];
 char Yfile[4096];
 int Auto;
 int Explain;
 int Components;
+int Summary;
 
 double UnscaleB0(double y_bar, Array2D *beta, Array2D *cs)
 {
@@ -256,11 +258,9 @@ int main(int argc, char *argv[])
 	MIO *xmio;
 	MIO *ymio;
 	Array2D *w;
-	Array2D *w_c;
-	Array2D *cw_c;
 	Array2D *ev;
 	Array2D *u;
-	Array2D *u_c;
+	Array2D *u_s;
 	Array2D *vcv;
 	Array2D *gamma;
 	Array2D *b;
@@ -268,6 +268,7 @@ int main(int argc, char *argv[])
 	Array2D *rx;
 	Array2D *cs;
 	Array2D *sx;
+	Array2D *Z;
 	double y_bar;
 	double acc;
 	double count;
@@ -281,6 +282,7 @@ int main(int argc, char *argv[])
 
 	Explain = 0;
 	Auto = 0;
+	Summary = 0;
 	while((c = getopt(argc,argv,ARGS)) != EOF) {
 		switch(c) {
 			case 'x':
@@ -297,6 +299,9 @@ int main(int argc, char *argv[])
 				break;
 			case 'E':
 				Explain = 1;
+				break;
+			case 'S':
+				Summary = 1;
 				break;
 			default:
 				fprintf(stderr,
@@ -434,53 +439,41 @@ int main(int argc, char *argv[])
 
 
 	/*
-	 * make data subset for regression
+	 * make eigenvalue subset for regression
 	 */
-	w_c = MakeArray2D(sx->ydim,Components);
-	if(w_c == NULL) {
+	u_s = MakeArray2D(u->ydim,Components);
+	if(u_s == NULL) {
 		exit(1);
 	}
 
-	for(i=0; i < w_c->ydim; i++) {
-		for(j=0; j < w_c->xdim; j++) {
-			w_c->data[i*w_c->xdim+j] =
-			  w->data[i*w->xdim+j];
+	for(i=0; i < u_s->ydim; i++) {
+		for(j=0; j < u_s->xdim; j++) {
+			u_s->data[i*u_s->xdim+j] =
+			  u->data[i*u->xdim+j];
 		}
 	}
 
 	/*
-	 * RegressMatrix2D is destructive
+	 * make Z matrix from significant principal components
 	 */
-	cw_c = CopyArray2D(w_c);
-	if(cw_c == NULL) {
+	Z = MultiplyArray2D(sx,u_s);
+	if(Z == NULL) {
+		fprintf(stderr,"couldn't make Z matrix\n");
 		exit(1);
 	}
-	gamma = RegressMatrix2D(cw_c,y);
+
+	gamma = RegressMatrix2D(Z,y);
         if(gamma == NULL) {
                 fprintf(stderr,"regression failed\n");
                 exit(1);
         }
-	FreeArray2D(cw_c);
-
-	/*
-	 * create array #Component of u vectors
-	 */
-	u_c = MakeArray2D(u->ydim,Components);
-	if(u_c == NULL) {
-		exit(1);
-	}
-	for(i=0; i < u_c->ydim; i++) {
-		for(j=0; j < u_c->xdim; j++) {
-			u_c->data[i*u_c->xdim+j] = u->data[i*u->xdim+j];
-		}
-	}
-
+	FreeArray2D(Z);
 
 	/*
 	 * create PCR estimator from PCA eigen vectors
 	 * (without intercept)
 	 */
-	b_star = MultiplyArray2D(u_c,gamma);
+	b_star = MultiplyArray2D(u_s,gamma);
 	if(b_star == NULL) {
 		fprintf(stderr,"couldn't form PCR estimator\n");
 		exit(1);
@@ -513,8 +506,10 @@ int main(int argc, char *argv[])
 			 / cs->data[1*cs->xdim+(i-1)];
 	}
 
-	printf("b: (PCR estimator)\n");
-	PrintArray2D(b);
+	if(Summary == 0) {
+		printf("b: (PCR estimator)\n");
+		PrintArray2D(b);
+	}
 
 	/*
 	 * now make regrssion array to compute fit
@@ -537,10 +532,9 @@ int main(int argc, char *argv[])
 	
 
 	FreeArray2D(u);
-	FreeArray2D(u_c);
+	FreeArray2D(u_s);
 	FreeArray2D(x);
 	FreeArray2D(w);
-	FreeArray2D(w_c);
 	FreeArray2D(y);
 	FreeArray2D(b);
 	FreeArray2D(gamma);
