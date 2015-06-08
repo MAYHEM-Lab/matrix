@@ -1,11 +1,12 @@
 CC=gcc
 MPATH=../mio
 APATH=.
+DPATH=../distributions
 EPATH=../euca-cutils
 LPATH=./lapack-3.5.0/lapacke/include/
-CFLAGS=-g -I${MPATH} -I${APATH} -I${LPATH} -I${EPATH} -I/usr/local/include
+CFLAGS=-g -I${MPATH} -I${APATH} -I${LPATH} -I${EPATH} -I${DPATH} -I/usr/local/include
 
-LIBS=${MPATH}/mymalloc.o ${MPATH}/mio.o ${EPATH}/libutils.a -lm
+LIBS=${MPATH}/mymalloc.o ${MPATH}/mio.o ${EPATH}/libutils.a -lm ${DPATH}/normal.o
 ALIB=${APATH}/mioarray.o
 
 LLIB=-L./lapack-3.5.0 -L/usr/local/Cellar/gcc/4.9.2_1/lib/gcc/4.9/ -llapacke -llapack -lrefblas -ltmglib -lgfortran
