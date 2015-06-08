@@ -5,6 +5,7 @@
 #include <math.h>
 
 #include "mioarray.h"
+#include "normal.h" /* for CI */
 
 
 double RSquared(Array2D *x, Array2D *b, Array2D *y)
@@ -82,7 +83,7 @@ double RMSE(Array2D *x, Array2D *b, Array2D *y)
 	return(rmse);
 }
 
-Array2D *Resduals(Array2D *x, Array2D *b, Array2D *y)
+Array2D *Residuals(Array2D *x, Array2D *b, Array2D *y)
 {
 	Array2D *f;
 	int i;
@@ -111,6 +112,114 @@ Array2D *Resduals(Array2D *x, Array2D *b, Array2D *y)
 
 	return(resid);
 }
+
+double SER(Array2D *resid, int p)
+{
+	Array2D *rt;
+	Array2D *rtr;
+	double n;
+	double se;
+
+	rt = TransposeArray2D(resid);
+	if(rt == NULL) {
+		return(-1);
+	}
+	
+	rtr = MultiplyArray2D(rt,resid);
+	if(rtr == NULL) {
+		FreeArray2D(rt);
+		return(-1);
+	}
+	FreeArray2D(rt);
+
+	n = (double)resid->ydim;
+	se = rtr->data[0] / (n - (double)p);
+
+	FreeArray2D(rtr);
+
+	return(se);
+}
+
+Array2D *CIBeta(Array2D *x, Array2D *b, Array2D *y, double alpha)
+{
+	double sigmasq;
+	double ssq;
+	Array2D *resid;
+	Array2D *ci;
+	Array2D *Qxx;
+	Array2D *xt;
+	Array2D *xtx;
+	double q;
+	int i;
+	double temp;
+	
+
+	resid = Residuals(x,b,y);
+	if(resid == NULL) {
+		return(NULL);
+	}
+
+	ssq = SER(resid,x->xdim);
+	if(ssq < 0) {
+		FreeArray2D(resid);
+		return(NULL);
+	}
+	FreeArray2D(resid);
+
+	sigmasq = ((double)(x->ydim - x->xdim) / (double)x->ydim) * ssq;
+	if(sigmasq < 0) {
+		return(NULL);
+	}
+
+	xt = TransposeArray2D(x);
+	if(xt == NULL) {
+		return(NULL);
+	}
+	xtx = MultiplyArray2D(xt,x);
+	FreeArray2D(xt);
+	if(xtx == NULL) {
+		return(NULL);
+	}
+	Qxx = InvertArray2D(xtx);
+	FreeArray2D(xtx);
+	if(Qxx == NULL) {
+		return(NULL);
+	}
+
+	q = InvNormal(1.0-(alpha/2.0),0.0,1.0);
+
+	/*
+	 * - in col 0, + in col 1
+	 */
+	ci = MakeArray2D(b->ydim,2);
+	if(ci == NULL) {
+		FreeArray2D(Qxx);
+		return(NULL);
+	}
+
+	for(i=0; i < ci->ydim; i++) {
+		/*
+		 * from diagonal
+		 */
+		temp = q * sqrt(sigmasq*Qxx->data[i*Qxx->xdim+i]);
+		ci->data[i*ci->xdim+0] =
+			b->data[i*b->xdim+0] - temp;
+		ci->data[i*ci->xdim+1] =
+			b->data[i*b->xdim+0] + temp;
+	}
+
+	FreeArray2D(Qxx);
+
+	return(ci);
+}
+
+	
+
+
+
+	
+
+	
 
 double RSquaredOld(Array2D *x, Array2D *b, Array2D *y)
 {
