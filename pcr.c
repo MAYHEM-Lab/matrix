@@ -216,12 +216,14 @@ int SignificantEV(Array2D *ev)
 	return(ev->ydim);
 }
 
+
 #ifdef STANDALONE
 
-#define ARGS "x:y:EC:ASR"
+#define ARGS "x:y:Ec:C:ASR"
 char *Usage = "usage: pca -x xfile\n\
 \t-A <automatically exclude co-linear values\n\
-\t-C count <number of components to use>\n\
+\t-C confidence_level\n\
+\t-c count <number of components to use>\n\
 \t-E <explain variation>\n\
 \t-R <print residuals>\n\
 \t-S <summary only>\n";
@@ -232,7 +234,8 @@ int Auto;
 int Explain;
 int Components;
 int Summary;
-int Residuals;
+int UseResiduals;
+double Confidence;
 
 double UnscaleB0(double y_bar, Array2D *beta, Array2D *cs)
 {
@@ -282,11 +285,17 @@ int main(int argc, char *argv[])
 	Array2D *resid;
 	double b0;
 	int err;
+	Array2D *Zc;
+	Array2D *ci;
+	Array2D *bc;
+	Array2D *bci;
+	Array2D *bv;
 
 	Explain = 0;
 	Auto = 0;
 	Summary = 0;
-	Residuals = 0;
+	UseResiduals = 0;
+	Confidence = 0;
 	while((c = getopt(argc,argv,ARGS)) != EOF) {
 		switch(c) {
 			case 'x':
@@ -298,14 +307,17 @@ int main(int argc, char *argv[])
 			case 'A':
 				Auto = 1;
 				break;
-			case 'C':
+			case 'c':
 				Components = atoi(optarg);
+				break;
+			case 'C':
+				Confidence = atof(optarg);
 				break;
 			case 'E':
 				Explain = 1;
 				break;
 			case 'R':
-				Residuals = 1;
+				UseResiduals = 1;
 				break;
 			case 'S':
 				Summary = 1;
@@ -351,6 +363,12 @@ int main(int argc, char *argv[])
 	ymio = MIODoubleFromText(d_mio,NULL);
 	if(ymio == NULL) {
 		fprintf(stderr,"no valid data in %s\n",Yfile);
+		exit(1);
+	}
+
+	if((Confidence < 0) || (Confidence > 1.0)) {
+		fprintf(stderr,"must enter confidence level between 0 and 1\n");
+		fprintf(stderr,"%s",Usage);
 		exit(1);
 	}
 
@@ -518,6 +536,7 @@ int main(int argc, char *argv[])
 		PrintArray2D(b);
 	}
 
+
 	/*
 	 * now make regrssion array to compute fit
 	 */
@@ -535,8 +554,17 @@ int main(int argc, char *argv[])
         rsq = RSquared(rx,b,y);
 	rmse = RMSE(rx,b,y);
 	printf("R^2: %f RMSE: %f\n",rsq,rmse);
-	if(Residuals == 1) {
-		resid = Resduals(rx,b,y);
+
+	if(Confidence != 0) {
+		ci = CIBeta(rx,b,y,Confidence);
+		if(ci != NULL) {
+			printf("%0.2f CI on PCR est.\n",1-Confidence);
+			PrintArray2D(ci);
+			FreeArray2D(ci);
+		}
+	}
+	if(UseResiduals == 1) {
+		resid = Residuals(rx,b,y);
 		if(resid != NULL) {
 			printf("residuals\n");
 			PrintArray1D(resid);
