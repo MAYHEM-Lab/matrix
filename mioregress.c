@@ -181,6 +181,10 @@ Array2D *CIBeta(Array2D *x, Array2D *b, Array2D *y, double alpha)
 		return(NULL);
 	}
 	Qxx = InvertArray2D(xtx);
+	if(Qxx == NULL) {
+		printf("error xtx: \n");
+		PrintArray2D(xtx);
+	}
 	FreeArray2D(xtx);
 	if(Qxx == NULL) {
 		return(NULL);
