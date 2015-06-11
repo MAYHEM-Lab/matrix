@@ -219,12 +219,13 @@ int SignificantEV(Array2D *ev)
 
 #ifdef STANDALONE
 
-#define ARGS "x:y:Ec:C:ASR"
+#define ARGS "x:y:Ec:C:ASRN"
 char *Usage = "usage: pca -x xfile\n\
 \t-A <automatically exclude co-linear values\n\
 \t-C confidence_level\n\
 \t-c count <number of components to use>\n\
 \t-E <explain variation>\n\
+\t-N <no intercept>\n\
 \t-R <print residuals>\n\
 \t-S <summary only>\n";
 
@@ -236,6 +237,7 @@ int Components;
 int Summary;
 int UseResiduals;
 double Confidence;
+int NoInt;
 
 double UnscaleB0(double y_bar, Array2D *beta, Array2D *cs)
 {
@@ -296,6 +298,7 @@ int main(int argc, char *argv[])
 	Summary = 0;
 	UseResiduals = 0;
 	Confidence = 0;
+	NoInt = 0;
 	while((c = getopt(argc,argv,ARGS)) != EOF) {
 		switch(c) {
 			case 'x':
@@ -315,6 +318,9 @@ int main(int argc, char *argv[])
 				break;
 			case 'E':
 				Explain = 1;
+				break;
+			case 'N':
+				NoInt = 1;
 				break;
 			case 'R':
 				UseResiduals = 1;
@@ -515,42 +521,63 @@ int main(int argc, char *argv[])
 	}
 	y_bar = y_bar / count;
 
-	/*
-	 * estimate of intercept for unscaled data
-	 */
-	b0 = UnscaleB0(y_bar,b_star,cs);
+	if(NoInt == 1) {
+		b = MakeArray1D(b_star->ydim);
+		if(b == NULL) {
+			exit(1);
+		}
+		for(i=0; i < b->ydim; i++) {
+			b->data[i*b->xdim+0] = 
+				b_star->data[i*b_star->xdim+0]
+			 		/ cs->data[1*cs->xdim+i];
+		}
+		rx = MakeArray2D(x->ydim,x->xdim);
+		if(rx == NULL) {
+			exit(1);
+		}
+		for(i=0; i < rx->ydim; i++) {
+			for(j=0; j < rx->xdim; j++) {
+				rx->data[i*rx->xdim+j] = 
+				 x->data[i*x->xdim+j];
+			}
+		}
+	} else {
+		/*
+		 * estimate of intercept for unscaled data
+		 */
+		b0 = UnscaleB0(y_bar,b_star,cs);
 
-	b = MakeArray1D(b_star->ydim+1);
-	if(b == NULL) {
-		exit(1);
-	}
-	b->data[0*b->xdim+0] = b0;
-	for(i=1; i < b->ydim; i++) {
-		b->data[i*b->xdim+0] = 
-			b_star->data[(i-1)*b_star->xdim+0]
-			 / cs->data[1*cs->xdim+(i-1)];
+		b = MakeArray1D(b_star->ydim+1);
+		if(b == NULL) {
+			exit(1);
+		}
+		b->data[0*b->xdim+0] = b0;
+		for(i=1; i < b->ydim; i++) {
+			b->data[i*b->xdim+0] = 
+				b_star->data[(i-1)*b_star->xdim+0]
+				 / cs->data[1*cs->xdim+(i-1)];
+		}
+
+		/*
+		 * now make regrssion array to compute fit
+		 */
+		rx = MakeArray2D(x->ydim,x->xdim+1);
+		if(rx == NULL) {
+			exit(1);
+		}
+		for(i=0; i < rx->ydim; i++) {
+			rx->data[i*rx->xdim+0] = 1;
+			for(j=1; j < rx->xdim; j++) {
+				rx->data[i*rx->xdim+j] = 
+					x->data[i*x->xdim+(j-1)];
+			}
+		}
 	}
 
 	if(Summary == 0) {
 		printf("b: (PCR estimator)\n");
 		PrintArray2D(b);
 	}
-
-
-	/*
-	 * now make regrssion array to compute fit
-	 */
-	rx = MakeArray2D(x->ydim,x->xdim+1);
-	if(rx == NULL) {
-		exit(1);
-	}
-	for(i=0; i < rx->ydim; i++) {
-		rx->data[i*rx->xdim+0] = 1;
-		for(j=1; j < rx->xdim; j++) {
-			rx->data[i*rx->xdim+j] = x->data[i*x->xdim+(j-1)];
-		}
-	}
-
         rsq = RSquared(rx,b,y);
 	rmse = RMSE(rx,b,y);
 	printf("R^2: %f RMSE: %f\n",rsq,rmse);
