@@ -69,7 +69,7 @@ void PrintArray2D(Array2D *a)
 
 	for(i=0; i < a->ydim; i++)
 	{
-		fprintf(stdout,"\t[");
+//		fprintf(stdout,"\t[");
 		for(j=0; j < a->xdim; j++)
 		{
 			if(j < a->xdim-1)
@@ -78,7 +78,8 @@ void PrintArray2D(Array2D *a)
 			}
 			else
 			{
-				fprintf(stdout,"%f]\n",a->data[i*a->xdim+j]);
+//				fprintf(stdout,"%f]\n",a->data[i*a->xdim+j]);
+				fprintf(stdout,"%f\n",a->data[i*a->xdim+j]);
 			}
 		}
 	}
@@ -128,6 +129,23 @@ Array2D *TransposeArray2D(Array2D *a)
 
 	return(t);
 }
+
+double NormArray1D(Array2D *a)
+{
+	double acc;
+	double sq;
+	int i;
+
+	acc = 0;
+	for(i=0;i < a->ydim; i++) {
+		acc += (a->data[i*a->xdim+0] *
+			a->data[i*a->xdim+0]);
+	}
+	sq = sqrt(acc);
+
+	return(sq);
+}
+
 
 #define EL(a,i,j,r) ((a)[(i)*(r)+(j)])
 
@@ -243,7 +261,7 @@ Array2D *InvertArray2D(Array2D *a)
 				for(j=0; j < c; j++)
 				{
 					EL(new_a,row,j,c) =
-						EL(orig_a,row,j,c) / 
+						EL(orig_a,row,j,c) /
 						   EL(orig_a,pivot,pivot,c);
 					EL(new_inverse,row,j,c) =
 						EL(inverse,row,j,c) /
@@ -257,7 +275,7 @@ Array2D *InvertArray2D(Array2D *a)
 					EL(new_a,row,j,c) =
 						EL(orig_a,row,j,c) - mult *
 							EL(orig_a,pivot,j,c);
-					EL(new_inverse,row,j,c) = 
+					EL(new_inverse,row,j,c) =
 						EL(inverse,row,j,c) - mult *
                                                         EL(inverse,pivot,j,c);
 				}
@@ -380,7 +398,7 @@ Array1D *EigenValueArray2D(Array2D *a)
 {
 	/*
 	 * use DGHERD, DHSEQR, and DHSEIN to compute eigenvector of a
-	 */ 
+	 */
 	lapack_int info;
 	lapack_int n;
 	lapack_int ilo;
@@ -448,7 +466,7 @@ Array1D *EigenValueArray2D(Array2D *a)
 		Free(wi);
 		return(NULL);
 	}
-			
+
 	info = LAPACKE_dhseqr(LAPACK_ROW_MAJOR,
 			      'E','N',n,ilo,ihi,
 			      tempa->data,lda,
@@ -476,7 +494,7 @@ Array2D *EigenVectorArray2D(Array2D *a)
 {
 	/*
 	 * use DGHERD, DHSEQR, and DHSEIN to compute eigenvector of a
-	 */ 
+	 */
 	lapack_int info;
 	lapack_int n;
 	lapack_int ilo;
@@ -563,7 +581,7 @@ Array2D *EigenVectorArray2D(Array2D *a)
 		Free(wi);
 		return(NULL);
 	}
-			
+
 	info = LAPACKE_dhseqr(LAPACK_ROW_MAJOR,
 			      'E','N',n,ilo,ihi,
 			      tempa->data,lda,
@@ -692,8 +710,8 @@ Array2D *EigenVectorArray2D(Array2D *a)
 			}
 		}
 	}
-				
-		
+
+
 	info = LAPACKE_dormhr(LAPACK_ROW_MAJOR,
 				'L','T',eigen->ydim,eigen->xdim,
 				ilo,ihi,
@@ -743,7 +761,7 @@ Array2D *NormalizeRowsArray2D(Array2D *a)
 	for(i=0; i < a->ydim; i++) {
 		acc = 0.0;
 		for(j=0; j < a->xdim; j++) {
-			acc += (a->data[i*a->xdim+j] * 
+			acc += (a->data[i*a->xdim+j] *
 			       a->data[i*a->xdim+j]);
 		}
 		acc = sqrt(acc);
@@ -771,7 +789,7 @@ Array2D *NormalizeColsArray2D(Array2D *a)
 	for(j=0; j < a->xdim; j++) {
 		acc = 0.0;
 		for(i=0; i < a->ydim; i++) {
-			acc += (a->data[i*a->xdim+j] * 
+			acc += (a->data[i*a->xdim+j] *
 			       a->data[i*a->xdim+j]);
 		}
 		acc = sqrt(acc);
@@ -784,9 +802,9 @@ Array2D *NormalizeColsArray2D(Array2D *a)
 	return(result);
 }
 
-	
 
-	
+
+
 
 Array2D *MultiplyArray2D(Array2D *a, Array2D *b)
 {
@@ -859,7 +877,7 @@ Array2D *AddArray2D(Array2D *a, Array2D *b)
 
 	for(i=0; i < rows; i++) {
 		for(j=0; j < cols; j++) {
-			Sum->data[i*cols+j] = 
+			Sum->data[i*cols+j] =
 				a->data[i*cols+j] +
 				b->data[i*cols+j];
 		}
@@ -867,7 +885,7 @@ Array2D *AddArray2D(Array2D *a, Array2D *b)
 
 	return(Sum);
 }
-			
+
 Array2D *SubtractArray2D(Array2D *a, Array2D *b)
 {
 	int i;
@@ -895,7 +913,7 @@ Array2D *SubtractArray2D(Array2D *a, Array2D *b)
 
 	for(i=0; i < rows; i++) {
 		for(j=0; j < cols; j++) {
-			Diff->data[i*cols+j] = 
+			Diff->data[i*cols+j] =
 				a->data[i*cols+j] -
 				b->data[i*cols+j];
 		}
@@ -986,9 +1004,9 @@ int main(int argc, char *argv[])
 
 #endif
 
-	
 
-	
+
+
 
 
 
