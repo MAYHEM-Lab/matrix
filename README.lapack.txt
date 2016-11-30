@@ -4,3 +4,5 @@
 -- make
 -- cd lapacke; make
 
+=== Linux ===
+make blaslib in lapack before making all
