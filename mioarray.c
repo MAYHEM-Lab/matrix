@@ -490,7 +490,7 @@ Array1D *EigenValueArray2D(Array2D *a)
 	return(wr);
 }
 
-Array2D *EigenVectorArray2D(Array2D *a)
+Array2D *OldEigenVectorArray2D(Array2D *a)
 {
 	/*
 	 * use DGHERD, DHSEQR, and DHSEIN to compute eigenvector of a
@@ -741,6 +741,81 @@ Array2D *EigenVectorArray2D(Array2D *a)
 	Free(z);
 	Free(select);
 	Free(ifailr);
+
+	return(eigen);
+}
+
+Array2D *EigenVectorArray2D(Array2D *a)
+{
+	lapack_int info;
+	lapack_int n;
+	lapack_int lda;
+	double *wr;
+	double *wi;
+	Array2D *tempa;
+	Array2D *eigen;
+	char jobvl = 'N';
+	char jobvr = 'V';
+
+	tempa = CopyArray2D(a);
+	if(tempa == NULL) {
+		return(NULL);
+	}
+
+	n = a->ydim;
+	lda = a->xdim;
+
+	wr = Malloc(n*sizeof(double));
+	if(wr == NULL) {
+		FreeArray2D(tempa);
+		return(NULL);
+	}
+	wi = Malloc(n*sizeof(double));
+	if(wi == NULL) {
+		FreeArray2D(tempa);
+		Free(wr);
+		return(NULL);
+	}
+
+	/*
+	 * make an array to hold right eigen vectors
+	 */
+	eigen = MakeArray2D(a->ydim,a->xdim);
+	if(eigen == NULL) {
+		FreeArray2D(tempa);
+		Free(wr);
+		Free(wi);
+		return(NULL);
+	}
+
+	info = LAPACKE_dgeev(LAPACK_ROW_MAJOR,
+			     'N',
+			     'V',
+			     n,
+			     tempa->data, 
+			     lda,
+			     wr,
+			     wi,
+			     NULL,
+			     eigen->ydim,
+			     eigen->data,
+			     eigen->ydim);
+
+
+	if(info < 0) {
+		fprintf(stderr,
+		"EigenVectorArray2D: couldn't find right eigenvectors; info: %d\n",
+			info);
+		FreeArray2D(tempa);
+		Free(wi);
+		Free(wr);
+		Free(eigen);
+		return(NULL);
+	}
+
+	FreeArray2D(tempa);
+	Free(wi);
+	Free(wr);
 
 	return(eigen);
 }

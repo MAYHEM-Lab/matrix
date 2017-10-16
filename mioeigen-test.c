@@ -62,7 +62,7 @@ int main(int argc, char *argv[])
 	temp = MultiplyArray2D(ct,a);
 	temp1 = MultiplyArray2D(temp,c);
 
-	printf("ct*a*c:");
+	printf("ct*a*c:\n");
 	PrintArray2D(temp1);
 
 	ev = EigenValueArray2D(a);
