@@ -3,7 +3,8 @@ MPATH=../mio
 APATH=.
 DPATH=../distributions
 EPATH=../euca-cutils
-LPATH=./lapack-3.5.0/lapacke/include/
+#LPATH=./lapack-3.5.0/lapacke/include/
+LPATH=./lapack-3.8.0/LAPACKE/include/
 CFLAGS=-g -I${MPATH} -I${APATH} -I${LPATH} -I${EPATH} -I${DPATH} -I/usr/local/include
 
 LIBS=${MPATH}/mymalloc.o ${MPATH}/mio.o ${EPATH}/libutils.a -lm ${DPATH}/normal.o
