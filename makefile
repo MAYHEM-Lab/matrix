@@ -7,7 +7,7 @@ EPATH=../euca-cutils
 LPATH=./lapack-3.8.0/LAPACKE/include/
 CFLAGS=-g -I${MPATH} -I${APATH} -I${LPATH} -I${EPATH} -I${DPATH} -I/usr/local/include
 
-LIBS=${MPATH}/mymalloc.o ${MPATH}/mio.o ${EPATH}/libutils.a -lm ${DPATH}/normal.o
+LIBS=${MPATH}/mymalloc.o ${MPATH}/mio.o ${EPATH}/libutils.a ${DPATH}/normal.o -lm
 ALIB=${APATH}/mioarray.o
 
 LLIB=-L./lapack-3.8.0 -L/usr/local/Cellar/gcc/7.2.0/lib/gcc/7/ -llapacke -llapack -lblas -lgfortran
