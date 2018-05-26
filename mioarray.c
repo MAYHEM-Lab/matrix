@@ -9,6 +9,11 @@
 
 #include "mioarray.h"
 
+#ifdef USELAPACK
+#include "cblas.h"
+#endif
+
+
 
 Array2D *MakeArray2D(int rows, int cols)
 {
@@ -738,6 +743,8 @@ Array2D *EigenVectorArray2D(Array2D *a)
 {
 	return(EigenVectorArray2DDriver(0,a));
 }
+
+
 #endif
 Array2D *NormalizeRowsArray2D(Array2D *a)
 {
@@ -799,6 +806,7 @@ Array2D *NormalizeColsArray2D(Array2D *a)
 
 
 
+#ifdef USELAPACK
 Array2D *MultiplyArray2D(Array2D *a, Array2D *b)
 {
 	Array2D *c;	/* result */
@@ -809,6 +817,13 @@ Array2D *MultiplyArray2D(Array2D *a, Array2D *b)
 	int new_r;
 	int new_c;
 	double *data;
+
+#ifdef USELAPACK
+	enum CBLAS_ORDER order = CblasRowMajor;
+	enum CBLAS_TRANSPOSE transA = CblasNoTrans;
+	enum CBLAS_TRANSPOSE transB = CblasNoTrans;
+	int common;
+#endif
 
 
 	if(a->xdim != b->ydim)
@@ -826,6 +841,75 @@ Array2D *MultiplyArray2D(Array2D *a, Array2D *b)
 	}
 
 	data = c->data;
+
+#ifdef USELAPACK
+/*
+ *  cblas_dgemm(order,transA,transB, rowsA, colsB, common ,1.0,A, 
+ *             rowsA ,B, common ,0.0,C, rowsA);
+ *
+ * https://www.ibm.com/support/knowledgecenter/en/SSLTBW_2.3.0/com.ibm.zos.v2r3.cbcpx01/atlasexample1.htm
+ */
+	common = a->xdim;
+	cblas_dgemm(order,
+		    transA,transB, 
+		    a->ydim, 
+		    b->xdim, 
+		    common,
+		    1.0,
+		    a->data,
+                    a->xdim,
+                    b->data, 
+		    b->xdim,
+		    0.0,
+		    c->data, 
+		    c->xdim);
+
+#else
+	for(i=0; i < new_r; i++)
+	{
+		for(j=0; j < new_c; j++)
+		{
+			acc = 0.0;
+			for(k=0; k < a->xdim; k++)
+			{
+				acc += (a->data[i*(a->xdim)+k] *
+					b->data[k*(b->xdim)+j]);
+			}
+			data[i*new_c+j] = acc;
+		}
+	}
+#endif
+
+	return(c);
+}
+
+Array2D *MultiplyArray2DAlt(Array2D *a, Array2D *b)
+{
+	Array2D *c;	/* result */
+	int i;
+	int j;
+	int k;
+	double acc;
+	int new_r;
+	int new_c;
+	double *data;
+
+	if(a->xdim != b->ydim)
+	{
+		return(NULL);
+	}
+
+	new_r = a->ydim;
+	new_c = b->xdim;
+
+	c = MakeArray2D(new_r,new_c);
+	if(c == NULL)
+	{
+		return(NULL);
+	}
+
+	data = c->data;
+
 	for(i=0; i < new_r; i++)
 	{
 		for(j=0; j < new_c; j++)
@@ -842,6 +926,56 @@ Array2D *MultiplyArray2D(Array2D *a, Array2D *b)
 
 	return(c);
 }
+
+#else
+
+Array2D *MultiplyArray2D(Array2D *a, Array2D *b)
+{
+	Array2D *c;	/* result */
+	int i;
+	int j;
+	int k;
+	double acc;
+	int new_r;
+	int new_c;
+	double *data;
+
+	if(a->xdim != b->ydim)
+	{
+		return(NULL);
+	}
+
+	new_r = a->ydim;
+	new_c = b->xdim;
+
+	c = MakeArray2D(new_r,new_c);
+	if(c == NULL)
+	{
+		return(NULL);
+	}
+
+	data = c->data;
+
+	for(i=0; i < new_r; i++)
+	{
+		for(j=0; j < new_c; j++)
+		{
+			acc = 0.0;
+			for(k=0; k < a->xdim; k++)
+			{
+				acc += (a->data[i*(a->xdim)+k] *
+					b->data[k*(b->xdim)+j]);
+			}
+			data[i*new_c+j] = acc;
+		}
+	}
+
+	return(c);
+}
+
+#define MultiplyArray2DAlt(a,b) MultiplyArray2D(a,b)
+
+#endif
 
 Array2D *AddArray2D(Array2D *a, Array2D *b)
 {
@@ -985,6 +1119,23 @@ int main(int argc, char *argv[])
 		printf("e:\n");
 		PrintArray2D(e);
 	}
+
+	for(i=0; i < 3; i++)
+	{
+		for(j=0; j < 5; j++)
+		{
+			a->data[i*a->xdim+j] = drand48();
+			b->data[j*b->xdim+i] = drand48();
+		}
+	}
+	FreeArray2D(c);
+	c = MultiplyArray2D(a,b);
+	printf("c:\n");
+	PrintArray2D(c);
+	FreeArray2D(c);
+	c = MultiplyArray2DAlt(a,b);
+	printf("Alt c:\n");
+	PrintArray2D(c);
 
 	FreeArray2D(a);
 	FreeArray2D(b);
