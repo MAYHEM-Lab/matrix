@@ -3,17 +3,21 @@ MPATH=../mio
 APATH=.
 DPATH=../distributions
 EPATH=../euca-cutils
-LPATH=./lapack-3.5.0/lapacke/include/
-CFLAGS=-g -I${MPATH} -I${APATH} -I${LPATH} -I${EPATH} -I${DPATH} -I/usr/local/include
+#LPATH=./lapack-3.5.0/lapacke/include/
+LPATH=./lapack-3.8.0/LAPACKE/include/
+CFLAGS=-g -I${MPATH} -I${APATH} -I${LPATH} -I${EPATH} -I${DPATH} -I/usr/local/include -I/usr/local/opt/openblas/include/
 
 LIBS=${MPATH}/mymalloc.o ${MPATH}/mio.o ${EPATH}/libutils.a -lm ${DPATH}/normal.o
 ALIB=${APATH}/mioarray.o
 
+#LLIB=-L./lapack-3.8.0 -L/usr/local/Cellar/gcc/7.2.0/lib/gcc/7/ -L/usr/lib64/atlas -llapacke -llapack -ltatlas -lgfortran
+#LLIB=-L./lapack-3.8.0 -L/usr/local/Cellar/gcc/7.2.0/lib/gcc/7/ -llapacke -llapack -lblas -lgfortran
+LLIB=-L./lapack-3.8.0 -L/usr/local/Cellar/gcc/8.1.0/lib/gcc/8/ -llapacke -llapack -lblas -lgfortran
 #LLIB=-L./lapack-3.5.0 -L/usr/local/Cellar/gcc/6.1.0/lib/gcc/6/ -llapacke -llapack -lblas -lgfortran
 #LLIB=-L./lapack-3.5.0 -L/usr/local/Cellar/gcc/4.9.2_1/lib/gcc/4.9/ -llapacke -llapack -lrefblas -lblas -ltmglib -lgfortran
-LLIB=-L./lapack-3.5.0 -L/usr/local/Cellar/gcc/5.3.0/lib/gcc/5/ -llapacke -llapack -lrefblas -lblas -ltmglib -lgfortran
+#LLIB=-L./lapack-3.5.0 -L/usr/local/Cellar/gcc/5.3.0/lib/gcc/5/ -llapacke -llapack -lrefblas -lblas -ltmglib -lgfortran
 
-all: polyco-test polyco.o mioregress.o mioarray-test mioregress-test regr mioeigen-test pca pcr
+all: polyco-test polyco.o mioregress.o mioarray-test mioregress-test regr mioeigen-test pca pcr match-array
 
 polyco-test: polyco.c polyco.h
 	${CC} ${CFLAGS} -DSTANDALONE -o polyco-test polyco.c ${LIBS}
@@ -36,6 +40,10 @@ mioregress-test: mioregress.c mioregress.h ${APATH}/mioarray.h ${APATH}/mioarray
 regr: regr.c mioregress.h ${APATH}/mioarray.h ${APATH}/mioarray.o mioregress.o
 #	${CC} ${CFLAGS} -o regr regr.c mioregress.o ${ALIB} ${LIBS} ${LLIB}
 	${CC} ${CFLAGS} -DUSELAPACK -o regr regr.c mioregress.o ${ALIB} ${LIBS} ${LLIB}
+
+match-array: match-array.c ${APATH}/mioarray.h ${APATH}/mioarray.o
+#	${CC} ${CFLAGS} -o regr regr.c mioregress.o ${ALIB} ${LIBS} ${LLIB}
+	${CC} ${CFLAGS} -o match-array match-array.c ${ALIB} ${LIBS} ${LLIB}
 
 pca: pca.c ${APATH}/mioarray.h ${APATH}/mioarray.o
 #	${CC} ${CFLAGS} -DSTANDALONE -o pca pca.c ${ALIB} ${LIBS} ${LLIB}

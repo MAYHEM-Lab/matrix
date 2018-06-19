@@ -12,6 +12,9 @@ int main(int argc, char *argv[])
 	int i;
 	int j;
 	Array2D *a;
+	Array2D *av;
+	Array1D *v;
+	double l;
 	Array2D *b;
 	Array2D *c;
 	Array2D *ct;
@@ -59,12 +62,30 @@ int main(int argc, char *argv[])
 	temp = MultiplyArray2D(ct,a);
 	temp1 = MultiplyArray2D(temp,c);
 
-	printf("ct*a*c:");
+	printf("ct*a*c:\n");
 	PrintArray2D(temp1);
 
 	ev = EigenValueArray2D(a);
 	printf("ev: ");
 	PrintArray1D(ev);
+
+	v = MakeArray1D(b->ydim);
+	for(j=0; j < b->xdim; j++) {
+		for(i=0; i < b->ydim; i++) {
+			v->data[i] = b->data[i*b->xdim+j];
+		}
+		av = MultiplyArray2D(a,v);
+		l = ev->data[j];
+		for(i=0; i < v->ydim; i++) {
+			v->data[i] = v->data[i] * l;
+		}
+		printf("av: \n");
+		PrintArray2D(av);
+		printf("lv\n");
+		PrintArray1D(v);
+		FreeArray2D(av);
+	}
+	FreeArray1D(v);
 
 
 	FreeArray2D(a);
