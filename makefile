@@ -12,7 +12,7 @@ CFLAGS=-g -I${MPATH} -I${APATH} -I${LPATH} -I${EPATH} -I${DPATH} -I/usr/local/in
 LIBS=${MPATH}/mymalloc.o ${MPATH}/mio.o ${EPATH}/libutils.a -lm ${DPATH}/normal.o
 ALIB=${APATH}/mioarray.o
 
-#LLIB=-L./lapack-3.8.0 -L/usr/local/Cellar/gcc/7.2.0/lib/gcc/7/ -L/usr/lib64/atlas -llapacke -llapack -ltatlas -lgfortran
+LLIB=-L./lapack-3.8.0 -L/usr/local/Cellar/gcc/7.2.0/lib/gcc/7/ -L/usr/lib64/atlas -llapacke -llapack -ltatlas -lgfortran
 #LLIB=-L./lapack-3.8.0 -L/usr/local/Cellar/gcc/7.2.0/lib/gcc/7/ -llapacke -llapack -lblas -lgfortran
 #LLIB=-L./lapack-3.8.0 -L/usr/local/Cellar/gcc/8.1.0/lib/gcc/8/ -llapacke -llapack -lblas -lgfortran
 #LLIB=-L./lapack-3.5.0 -L/usr/local/Cellar/gcc/6.1.0/lib/gcc/6/ -llapacke -llapack -lblas -lgfortran
