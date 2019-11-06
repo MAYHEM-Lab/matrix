@@ -1,3 +1,12 @@
+-- mojave or later
+-- untar lapack 3.8.0
+-- untar blas-3.8.0
+-- untar cblas
+-- build blas
+-- build cblas
+-- build lapack
+-- build lapacke
+
 -- fix homegrew
 -- brew install gcc
 -- make blaslib
