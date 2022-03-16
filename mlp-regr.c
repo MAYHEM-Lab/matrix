@@ -61,10 +61,10 @@ struct net_stc
 };
 typedef struct net_stc Net;
 
-void RandomizeArray(Array2D *a)
+void Randomize(Array2D *a)
 {
 	int i;
-	int j
+	int j;
 
 	for(i=0; i < a->ydim; i++) {
 		for(j=0; i < a->xdim; j++) {
@@ -75,9 +75,9 @@ void RandomizeArray(Array2D *a)
 	return;
 }
 
-void InitNet(Array2D *x, Array2D *y, double rate, double momentum)
+Net *InitNet(Array2D *x, Array2D *y, double rate, double momentum)
 {
-	Next *n;
+	Net *n;
 
 	n = (Net *)malloc(sizeof(Net));
 	if(n == NULL) {
@@ -112,13 +112,13 @@ void InitNet(Array2D *x, Array2D *y, double rate, double momentum)
 	Randomize(n->biastoO);
 
 	n->prevItoH = MakeArray2D(x->xdim,x->xdim);
-	if(prevItoH == NULL) {
+	if(n->prevItoH == NULL) {
 		goto out;
 	}
 	Randomize(n->prevItoH);
 
 	n->prevHtoO = MakeArray2D(x->xdim,y->xdim);
-	if(prevHtoO = NULL) {
+	if(n->prevHtoO = NULL) {
 		goto out;
 	}
 	Randomize(n->prevHtoO);
@@ -157,19 +157,23 @@ out:
 	exit(1);
 }
 
-double GlobalError(n)
+double GlobalError(Net *n, Array2D *yprime)
 {
 	int i;
+	int j;
 	double sum = 0;
 	for(i=0; i < n->Ox->ydim; i++) {
-		sum += ((n->data->y[i*y->xdim+i] - n->Ox->data[i*n->Ox->xdim+i]) *
-			(n->data->y[i*y->xdim+i] - n->Ox->data[i*n->Ox->xdim+i]));
+		for(j=0; j < yprime->ydim; j++) {
+			sum += ((n->y->data[j*n->y->xdim+i] - yprime->data[j*yprime->xdim + i]) *
+				(n->y->data[j*n->y->xdim+i] - yprime->data[j*yprime->xdim + i]));
+		}
 	}
 	return(sum);
 }
 
 void FeedForward(int input, 
-		 Next *n)
+		 Net *n,
+		 Array2D *yprime)
 				
 {
 	int i;
@@ -209,6 +213,7 @@ void FeedForward(int input,
 				n->biastoO->data[node];
 		}
 		n->Ox->data[node] = sum;
+		yprime->data[input*yprime->xdim + node] = sum;
 	}
 
 	return;
@@ -221,11 +226,13 @@ double BackPropagation(int input,
 	int j;
 	int node;
 	int inode;
+	int onode;
 	double d;
 	double delta;
 	Array2D *out_delta;
 	Array2D *curr_delta;
 	Array1D *curr_bias;
+	double sum;
 
 
 
@@ -239,17 +246,17 @@ double BackPropagation(int input,
  	 * Ox is the output
  	 * Hx is the computed output friom each hidden node
  	 */
-	curr_delta = MakeArray2(n->HtoO->ydim,n->HtoO->xdim);
+	curr_delta = MakeArray2D(n->HtoO->ydim,n->HtoO->xdim);
 	if(curr_delta == NULL) {
 		fprintf(stderr,"Backpropagation no space for output deltas\n");
 		exit(1);
 	}
-	curr_bias = MakeArray1(n->biastoO->ydim);
+	curr_bias = MakeArray1D(n->biastoO->ydim);
 	if(curr_bias == NULL) {
 		fprintf(stderr,"Backpropagation no space for output bias\n");
 		exit(1);
 	}
-	for(node=0; node < HtoO->xdim; node++) {
+	for(node=0; node < n->HtoO->xdim; node++) {
 		d = (n->y->data[node*n->y->xdim+input] - n->Ox->data[node]);
 		/*
  		 * for sigmoid
@@ -258,7 +265,7 @@ double BackPropagation(int input,
 		delta = d * n->Ox->data[node];
 		out_delta->data[node] = delta;
 		for(inode=0; inode < n->ItoH->xdim; inode++) {
-			for(i=0; i < HtoO->ydim; i++) {
+			for(i=0; i < n->HtoO->ydim; i++) {
 				n->HtoO->data[i*n->HtoO->xdim + node] +=
 					((n->rate * delta * n->Hx->data[inode]) + (n->mu*n->prevHtoO->data[i*n->HtoO->xdim + node]));
 				curr_delta->data[i*n->HtoO->xdim + node] = 
@@ -278,12 +285,12 @@ double BackPropagation(int input,
 	/*
  	 * now do the hidden layer
  	 */
-	curr_delta = MakeArray2(n->itoH->ydim,n->ItoH->xdim);
+	curr_delta = MakeArray2D(n->ItoH->ydim,n->ItoH->xdim);
 	if(curr_delta == NULL) {
 		fprintf(stderr,"Backpropagation no space for hidden deltas\n");
 		exit(1);
 	}
-	curr_bias = MakeArray1(n->biastoO->ydim);
+	curr_bias = MakeArray1D(n->biastoO->ydim);
 	if(curr_bias == NULL) {
 		fprintf(stderr,"Backpropagation no space for hidden bias\n");
 		exit(1);
@@ -302,7 +309,7 @@ double BackPropagation(int input,
 			delta = n->rate * d * n->x->data[input*n->x->xdim + node];
 			for(i=0; i < n->ItoH->ydim; i++) {
 				n->ItoH->data[i*n->ItoH->xdim] += (delta + (n->prevItoH->data[i*n->ItoH->xdim] * n->mu));
-				out_delta->data[i*n->ItoH->xdim] = delta + (n->prevItoH->data[i*n->ItoH->xdim] * n->mu);
+				curr_delta->data[i*n->ItoH->xdim] = delta + (n->prevItoH->data[i*n->ItoH->xdim] * n->mu);
 			}
 			sum = 0;
 			for(j=0; j < n->biastoH->ydim; j++) {
@@ -311,7 +318,7 @@ double BackPropagation(int input,
 			d = (n->y->data[onode] - n->Ox->data[onode]) * n->Ox->data[onode] * sum;
 			delta = n->rate * d;
 			n->biastoH->data[node] += (delta + n->prevbiastoH->data[node] * n->mu);
-			out_bias->data[node] = delta + (n->prevbiastoH->data[node] * n->mu);
+			curr_bias->data[node] = delta + (n->prevbiastoH->data[node] * n->mu);
 		}
 	}
 	FreeArray2D(out_delta);
@@ -337,6 +344,8 @@ int main(int argc, char *argv[])
 	MIO *ymio;
 	Array2D *yprime;
 	double err;
+	unsigned long size;
+	Net *n;
 
 	while((c = getopt(argc,argv,ARGS)) != EOF) {
 		switch(c) {
@@ -437,26 +446,23 @@ int main(int argc, char *argv[])
 	}
 
 	if(Training == 1) {
-		n = InitNetwork(x,y,Rate,Momentum);
+		n = InitNet(x,y,Rate,Momentum);
 
 		err = 1000000;
 		i = 0;
-		while(err < THRESHOLD) {
+		while(err < Error) {
 			for(input=0; input < x->ydim; input++) {
-				FeedForward(input,n);
+				FeedForward(input,n,yprime);
 				BackPropagation(input,n);
-				for(j=0; j < y->xdim; j++) {
-					yprime->data[input*yprime->xdim+j] = n->Ox->data[j];
-				}
 			}
-			err = GlobalError(n);
+			err = GlobalError(n,yprime);
 			if(Verbose) {
 				printf("iter: %d, err: %f\n",i,err);
 				for(j=0; j < y->ydim; j++) {
 					for(k=0; k < y->xdim; k++) {
 						printf("%f %f (%f)\n",
 							y->data[j*y->xdim+k],
-							yprime->data[j*yprime->xdim+k];
+							yprime->data[j*yprime->xdim+k],
 							y->data[j*y->xdim+k] - yprime->data[j*yprime->xdim+k]);
 					}
 				}
@@ -473,11 +479,5 @@ int main(int argc, char *argv[])
 
 	return(0);
 }
-
-
-	
-
-	
-
 
 
