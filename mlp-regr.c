@@ -23,6 +23,7 @@
  *
  * https://www.cse.unsw.edu.au/~cs9417ml/MLP2/BackPropagation.html
  * http://www.dontveter.com/bpr/public2.html
+ * https://medium.com/@tiago.tmleite/neural-networks-multilayer-perceptron-and-the-backpropagation-algorithm-a5cd5b904fde
  */
 
 #define RAND() drand48()
@@ -234,6 +235,7 @@ double BackPropagation(int input,
 	Array2D *curr_delta;
 	Array1D *curr_bias;
 	double sum;
+	double de_dw;
 
 
 
@@ -258,13 +260,12 @@ double BackPropagation(int input,
 		exit(1);
 	}
 	for(node=0; node < n->HtoO->xdim; node++) {
-		d = (n->y->data[node*n->y->xdim+input] - n->Ox->data[node]);
+		delta = -2 * (n->y->data[node*n->y->xdim+input] - n->Ox->data[node]);
 		/*
  		 * for sigmoid
 		delta = d * n->Ox->data[node] * (1.0 - n->Ox->data[node]);
 		 */
 		//delta = d * n->Ox->data[node];
-		delta = d;
 		if(delta > CLIP) {
 			delta = CLIP;
 		} else if (delta < -CLIP) {
@@ -272,13 +273,10 @@ double BackPropagation(int input,
 		}
 		out_delta->data[node] = delta;
 		for(inode=0; inode < n->ItoH->xdim; inode++) {
-			n->HtoO->data[inode*n->HtoO->xdim + node] +=
-				((n->rate * delta * n->Hx->data[inode]) + (n->mu*n->prevHtoO->data[inode*n->HtoO->xdim + node]));
-			curr_delta->data[inode*n->HtoO->xdim + node] = n->rate * delta * n->Hx->data[inode] + 
-					n->mu*n->prevHtoO->data[inode*n->HtoO->xdim + node];
+			de_dw = delta * n->Hx->data[inode];
+			n->HtoO->data[inode*n->HtoO->xdim + node] -= (n->rate * de_dw);
 		}
-		n->biastoO->data[node] += ((n->rate * delta) + (n->mu*n->prevbiastoO->data[node]));
-		curr_bias->data[node] = (n->rate * delta) + (n->mu*n->prevbiastoO->data[node]);
+		n->biastoO->data[node] -= (n->rate * delta);
 	}
 
 	FreeArray2D(n->prevHtoO);
@@ -304,36 +302,22 @@ double BackPropagation(int input,
 		for(onode=0; onode < n->HtoO->xdim; onode++) {
 			sum += (n->HtoO->data[node*n->HtoO->xdim + onode] * out_delta->data[onode]);
 		}
+		delta = sum;
 		/*
 		 * for sigmoid
 		d = (n->y->data[onode] - n->Ox->data[onode]) * n->Ox->data[onode] * sum;
 		*/
-		for(onode=0; onode < n->HtoO->xdim; onode++) {
-			// d = (n->y->data[input*n->y->xdim + onode] - n->Ox->data[onode]) * sum;
-			// delta = n->rate * d * n->x->data[input*n->x->xdim + node];
-			delta = sum;
-			if(delta > CLIP) {
-				delta = CLIP;
-			} else if (delta < -CLIP) {
-				delta = -CLIP;
-			}
-			for(inode=0; inode < n->x->xdim; inode++) {
-				n->ItoH->data[inode*n->ItoH->xdim + node] += 
-						((n->rate*delta*n->x->data[input*n->x->xdim + node]) + 
-							(n->prevItoH->data[inode*n->ItoH->xdim + node] * n->mu));
-				curr_delta->data[inode*n->ItoH->xdim + node] = delta; 
-			}
-			//d = (n->y->data[input*n->y->xdim + onode ] - n->Ox->data[onode]) * n->Ox->data[onode] * n->biastoH->data[node];
-			// d = n->biastoH->data[node] * out_delta->data[onode];
-			delta = n->biastoO->data[onode] * out_delta->data[onode];
-			if(delta > CLIP) {
-				delta = CLIP;
-			} else if (delta < -CLIP) {
-				delta = -CLIP;
-			}
-			n->biastoH->data[node] += ((n->rate*delta) + (n->prevbiastoH->data[node] * n->mu));
-			curr_bias->data[node] = (n->rate*delta) + (n->prevbiastoH->data[node] * n->mu);
+		delta = sum;
+		if(delta > CLIP) {
+			delta = CLIP;
+		} else if (delta < -CLIP) {
+			delta = -CLIP;
 		}
+		for(inode=0; inode < n->x->xdim; inode++) {
+			de_dw = delta * n->x->data[input*n->x->xdim + inode];
+			n->ItoH->data[inode*n->ItoH->xdim + node] -= (n->rate * de_dw);
+		}
+		n->biastoH->data[node] -= n->rate * delta;
 	}
 	FreeArray2D(out_delta);
 	FreeArray2D(n->prevItoH);
