@@ -6,20 +6,23 @@
 
 #include "mioregress.h"
 
-#define ARGS "x:y:C:"
+#define ARGS "x:y:C:R"
 char *Usage = "usage: regr -x xfile\n\
 \t-y yfile\n\
+\t-R <compute results>\n\
 \t-C confidence_level\n";
 
 char Xfile[4096];
 char Yfile[4096];
 double Confidence;
+int Results;
 
 
 int main(int argc, char *argv[])
 {
 	int i;
 	int j;
+	int k;
 	int c;
 	MIO *d_mio;
 	Array2D *x;
@@ -33,6 +36,7 @@ int main(int argc, char *argv[])
 	double rsq;
 	double rmse;
 	Array2D *ci;
+	double yhat;
 
 	Confidence = 0;
 	while((c = getopt(argc,argv,ARGS)) != EOF) {
@@ -45,6 +49,9 @@ int main(int argc, char *argv[])
 				break;
 			case 'C':
 				Confidence = atof(optarg);
+				break;
+			case 'R':
+				Results = 1;
 				break;
 			default:
 				fprintf(stderr,
@@ -118,20 +125,34 @@ int main(int argc, char *argv[])
 	rmse = RMSE(x,b,y);
 
 
-	printf("b: ");
-	PrintArray2D(b);
+	if(Results == 0) {
+		printf("b: ");
+		PrintArray2D(b);
 
-	printf("\n");
-	printf("R^2: %f RMSE: %f\n",rsq,rmse);
+		printf("\n");
+		printf("R^2: %f RMSE: %f\n",rsq,rmse);
 
-	if(Confidence != 0) {
-		ci = CIBeta(x,b,y,Confidence);
-		if(ci != NULL) {
-			printf("%0.2f CI b:\n",1-Confidence);
-			PrintArray2D(ci);
-			FreeArray2D(ci);
+		if(Confidence != 0) {
+			ci = CIBeta(x,b,y,Confidence);
+			if(ci != NULL) {
+				printf("%0.2f CI b:\n",1-Confidence);
+				PrintArray2D(ci);
+				FreeArray2D(ci);
+			}
+		}
+	} else {
+		for(k=0; k < x->ydim; k++) {
+			yhat = 0;
+			for(i=0; i < x->xdim; i++) {
+				yhat += x->data[k*x->xdim+i] *
+					b->data[i*b->xdim+0];
+			}
+			printf("%f %f\n",
+				y->data[k*y->xdim+0], yhat);
 		}
 	}
+					
+
 
 	FreeArray2D(x);
 	FreeArray2D(cx);
