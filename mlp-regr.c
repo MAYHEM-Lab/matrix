@@ -10,6 +10,8 @@
 #define DEFAULT_MOMENTUM (0.1)
 #define DEFAULT_ERR (0.1)
 
+#define CLIP 10
+
 /*
  * single-hidden layer version of multi-layer perceptron
  *
@@ -20,6 +22,7 @@
  * single output layer (regression)
  *
  * https://www.cse.unsw.edu.au/~cs9417ml/MLP2/BackPropagation.html
+ * http://www.dontveter.com/bpr/public2.html
  */
 
 #define RAND() drand48()
@@ -67,7 +70,7 @@ void Randomize(Array2D *a)
 	int j;
 
 	for(i=0; i < a->ydim; i++) {
-		for(j=0; i < a->xdim; j++) {
+		for(j=0; j < a->xdim; j++) {
 			a->data[i*a->xdim+j] = RAND();
 		}
 	}
@@ -118,7 +121,7 @@ Net *InitNet(Array2D *x, Array2D *y, double rate, double momentum)
 	Randomize(n->prevItoH);
 
 	n->prevHtoO = MakeArray2D(x->xdim,y->xdim);
-	if(n->prevHtoO = NULL) {
+	if(n->prevHtoO == NULL) {
 		goto out;
 	}
 	Randomize(n->prevHtoO);
@@ -162,13 +165,13 @@ double GlobalError(Net *n, Array2D *yprime)
 	int i;
 	int j;
 	double sum = 0;
-	for(i=0; i < n->Ox->ydim; i++) {
-		for(j=0; j < yprime->ydim; j++) {
+	for(i=0; i < n->y->ydim; i++) {
+		for(j=0; j < n->y->ydim; j++) {
 			sum += ((n->y->data[j*n->y->xdim+i] - yprime->data[j*yprime->xdim + i]) *
 				(n->y->data[j*n->y->xdim+i] - yprime->data[j*yprime->xdim + i]));
 		}
 	}
-	return(sum);
+	return(sum/2.0);
 }
 
 void FeedForward(int input, 
@@ -191,14 +194,13 @@ void FeedForward(int input,
 	for(node = 0; node < n->ItoH->xdim; node++) {
 		sum = 0;
 		for(i=0; i < n->x->xdim; i++) {
-			sum += n->x->data[input*n->x->xdim + i] * n->ItoH->data[i*n->ItoH->xdim + node] +
-				n->biastoH->data[i];
+			sum += (n->x->data[input*n->x->xdim + i] * n->ItoH->data[i*n->ItoH->xdim + node]);
 		}
 		/*
  		 * for sigmoid
 		n->Hx->data[node] = Sigmoid(sum);
 		 */
-		n->Hx->data[node] = sum;
+		n->Hx->data[node] = sum + n->biastoH->data[node];
 	}
 
 
@@ -209,11 +211,10 @@ void FeedForward(int input,
 	for(node = 0; node < n->HtoO->xdim; node++) {
 		sum = 0;
 		for(i=0; i < n->ItoH->xdim; i++) {
-			sum += n->Hx->data[i] * n->HtoO->data[i*n->HtoO->xdim + node] +
-				n->biastoO->data[node];
+			sum += (n->Hx->data[i] * n->HtoO->data[i*n->HtoO->xdim + node]);
 		}
-		n->Ox->data[node] = sum;
-		yprime->data[input*yprime->xdim + node] = sum;
+		n->Ox->data[node] = sum + n->biastoO->data[node];
+		yprime->data[input*yprime->xdim + node] = n->Ox->data[node];
 	}
 
 	return;
@@ -262,19 +263,22 @@ double BackPropagation(int input,
  		 * for sigmoid
 		delta = d * n->Ox->data[node] * (1.0 - n->Ox->data[node]);
 		 */
-		delta = d * n->Ox->data[node];
+		//delta = d * n->Ox->data[node];
+		delta = d;
+		if(delta > CLIP) {
+			delta = CLIP;
+		} else if (delta < -CLIP) {
+			delta = -CLIP;
+		}
 		out_delta->data[node] = delta;
 		for(inode=0; inode < n->ItoH->xdim; inode++) {
-			for(i=0; i < n->HtoO->ydim; i++) {
-				n->HtoO->data[i*n->HtoO->xdim + node] +=
-					((n->rate * delta * n->Hx->data[inode]) + (n->mu*n->prevHtoO->data[i*n->HtoO->xdim + node]));
-				curr_delta->data[i*n->HtoO->xdim + node] = 
-					n->rate * delta * n->Hx->data[inode] + 
-					n->mu*n->prevHtoO->data[i*n->HtoO->xdim + node];
-			}
-			n->biastoO->data[node] += ((n->rate * delta) + (n->mu*n->prevbiastoO->data[node]));
-			curr_bias->data[node] = (n->rate * delta) + (n->mu*n->prevbiastoO->data[node]);
+			n->HtoO->data[inode*n->HtoO->xdim + node] +=
+				((n->rate * delta * n->Hx->data[inode]) + (n->mu*n->prevHtoO->data[inode*n->HtoO->xdim + node]));
+			curr_delta->data[inode*n->HtoO->xdim + node] = n->rate * delta * n->Hx->data[inode] + 
+					n->mu*n->prevHtoO->data[inode*n->HtoO->xdim + node];
 		}
+		n->biastoO->data[node] += ((n->rate * delta) + (n->mu*n->prevbiastoO->data[node]));
+		curr_bias->data[node] = (n->rate * delta) + (n->mu*n->prevbiastoO->data[node]);
 	}
 
 	FreeArray2D(n->prevHtoO);
@@ -295,30 +299,40 @@ double BackPropagation(int input,
 		fprintf(stderr,"Backpropagation no space for hidden bias\n");
 		exit(1);
 	}
-	for(onode=0; onode < n->HtoO->xdim; onode++) {
-		for(node=0; node < n->ItoH->xdim; node++) {
-			sum = 0;
-			for(j=0; j < n->ItoH->xdim; j++) {
-				sum += (n->HtoO->data[j*n->HtoO->ydim + onode] * out_delta->data[onode]);
+	for(node=0; node < n->ItoH->xdim; node++) {
+		sum = 0;
+		for(onode=0; onode < n->HtoO->xdim; onode++) {
+			sum += (n->HtoO->data[node*n->HtoO->xdim + onode] * out_delta->data[onode]);
+		}
+		/*
+		 * for sigmoid
+		d = (n->y->data[onode] - n->Ox->data[onode]) * n->Ox->data[onode] * sum;
+		*/
+		for(onode=0; onode < n->HtoO->xdim; onode++) {
+			// d = (n->y->data[input*n->y->xdim + onode] - n->Ox->data[onode]) * sum;
+			// delta = n->rate * d * n->x->data[input*n->x->xdim + node];
+			delta = sum;
+			if(delta > CLIP) {
+				delta = CLIP;
+			} else if (delta < -CLIP) {
+				delta = -CLIP;
 			}
-			/*
- *			 * for sigmoid
-			d = (n->y->data[onode] - n->Ox->data[onode]) * n->Ox->data[onode] * sum;
-			*/
-			d = (n->y->data[onode] - n->Ox->data[onode]) * sum;
-			delta = n->rate * d * n->x->data[input*n->x->xdim + node];
-			for(i=0; i < n->ItoH->ydim; i++) {
-				n->ItoH->data[i*n->ItoH->xdim] += (delta + (n->prevItoH->data[i*n->ItoH->xdim] * n->mu));
-				curr_delta->data[i*n->ItoH->xdim] = delta + (n->prevItoH->data[i*n->ItoH->xdim] * n->mu);
+			for(inode=0; inode < n->x->xdim; inode++) {
+				n->ItoH->data[inode*n->ItoH->xdim + node] += 
+						((n->rate*delta*n->x->data[input*n->x->xdim + node]) + 
+							(n->prevItoH->data[inode*n->ItoH->xdim + node] * n->mu));
+				curr_delta->data[inode*n->ItoH->xdim + node] = delta; 
 			}
-			sum = 0;
-			for(j=0; j < n->biastoH->ydim; j++) {
-				sum += (n->biastoH->data[j] * out_delta->data[onode]);
+			//d = (n->y->data[input*n->y->xdim + onode ] - n->Ox->data[onode]) * n->Ox->data[onode] * n->biastoH->data[node];
+			// d = n->biastoH->data[node] * out_delta->data[onode];
+			delta = n->biastoO->data[onode] * out_delta->data[onode];
+			if(delta > CLIP) {
+				delta = CLIP;
+			} else if (delta < -CLIP) {
+				delta = -CLIP;
 			}
-			d = (n->y->data[onode] - n->Ox->data[onode]) * n->Ox->data[onode] * sum;
-			delta = n->rate * d;
-			n->biastoH->data[node] += (delta + n->prevbiastoH->data[node] * n->mu);
-			curr_bias->data[node] = delta + (n->prevbiastoH->data[node] * n->mu);
+			n->biastoH->data[node] += ((n->rate*delta) + (n->prevbiastoH->data[node] * n->mu));
+			curr_bias->data[node] = (n->rate*delta) + (n->prevbiastoH->data[node] * n->mu);
 		}
 	}
 	FreeArray2D(out_delta);
@@ -450,7 +464,7 @@ int main(int argc, char *argv[])
 
 		err = 1000000;
 		i = 0;
-		while(err < Error) {
+		while(err > Error) {
 			for(input=0; input < x->ydim; input++) {
 				FeedForward(input,n,yprime);
 				BackPropagation(input,n);
