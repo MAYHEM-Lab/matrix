@@ -29,9 +29,10 @@
 #define RAND() drand48()
 #define SEED(x) srand48(x)
 
-#define ARGS "x:y:TE:R:M:v"
+#define ARGS "x:y:TE:R:M:vt:"
 char *Usage = "usage: mlp-regr -x xfile\n\
 \t-y yfile\n\
+\t-t testfile\n\
 \t-T <training mode>\n\
 \t-E error threshold (training mode)\n\
 \t-R learning rate (training mode)\n\
@@ -40,6 +41,7 @@ char *Usage = "usage: mlp-regr -x xfile\n\
 
 char Xfile[4096];
 char Yfile[4096];
+char Tfile[4096];
 int Training;
 double Error;
 double Rate;
@@ -340,6 +342,8 @@ int main(int argc, char *argv[])
 	MIO *xmio;
 	Array2D *y;
 	MIO *ymio;
+	Array2D *t;
+	MIO *tmio;
 	Array2D *yprime;
 	double err;
 	unsigned long size;
@@ -368,6 +372,9 @@ int main(int argc, char *argv[])
 			case 'v':
 				Verbose = 1;
 				break;
+			case 't':
+				strncpy(Tfile,optarg,sizeof(Tfile));
+				break;
 			default:
 				fprintf(stderr,
 			"unrecognized command: %c\n",(char)c);
@@ -382,11 +389,11 @@ int main(int argc, char *argv[])
 			fprintf(stderr,"%s",Usage);
 			exit(1);
 		}
-	}
-	if(Yfile[0] == 0) {
-		fprintf(stderr,"must specify yfile\n");
-		fprintf(stderr,"%s",Usage);
-		exit(1);
+		if(Yfile[0] == 0) {
+			fprintf(stderr,"must specify yfile\n");
+			fprintf(stderr,"%s",Usage);
+			exit(1);
+		}
 	}
 
 	if(Training == 1) {
@@ -468,6 +475,45 @@ int main(int argc, char *argv[])
 				fflush(stdout);
 			}
 			i++;
+		}
+	}
+	if(Tfile[0] != 0) {
+		size = MIOSize(Tfile);
+		d_mio = MIOOpenText(Tfile,"r",size);
+		if(d_mio == NULL) {
+			fprintf(stderr,"couldn't open %s\n",Tfile);
+			exit(1);
+		}
+		tmio = MIODoubleFromText(d_mio,NULL);
+		if(tmio == NULL) {
+			fprintf(stderr,"no valid data in %s\n",Tfile);
+			exit(1);
+		}
+		t = MakeArray2DFromMIO(tmio);
+		if(t == NULL) {
+			fprintf(stderr,"no space for test matrix\n");
+			exit(1);
+		}
+		FreeArray2D(yprime);
+		yprime = MakeArray2D(t->ydim,y->xdim);
+		if(yprime == NULL) {
+			fprintf(stderr,"no space for inference predictions\n");
+			exit(1);
+		}
+		/*
+ 		 * make the test inputs the x inputs
+ 		 */
+		FreeArray2D(n->x);
+		x = t;
+		n->x = t;
+		for(input=0; input < t->ydim; input++) {
+			FeedForward(input,n,yprime);
+		}
+		for(i=0;i < yprime->ydim; i++) {
+			for(j=0; j < n->y->xdim; j++) {
+				printf("%f ",yprime->data[yprime->xdim*i+j]);
+			}
+			printf("\n");
 		}
 	}
 
