@@ -64,8 +64,42 @@ struct net_stc
 	Array2D *prevbiastoH; // prev delta for back prop
 	Array2D *prevHtoO; // prev delta for backprop
 	Array2D *prevbiastoO; // prev delta for backprop
+	double xmean;
+	double xsd;
+	double ymean;
+	double ysd;
 };
 typedef struct net_stc Net;
+
+void PrintNet(Net *n)
+{
+	Array2D *temp;
+	printf("input vectors\n");
+	PrintArray2D(n->x);
+	printf("layer 1 weights\n");
+	PrintArray2D(n->ItoH);
+	printf("layer 1 biases\n");
+	PrintArray2D(n->biastoH);
+	temp = TransposeArray2D(n->Hx);
+	printf("layer 1 coefficients\n");
+	PrintArray2D(n->Hx);
+	FreeArray2D(temp);
+	printf("layer 2 weights\n");
+	PrintArray2D(n->HtoO);
+	printf("layer 2 biases\n");
+	PrintArray2D(n->biastoO);
+	temp = TransposeArray2D(n->Ox);
+	printf("layer 2 coefficients\n");
+	PrintArray2D(temp);
+	FreeArray2D(temp);
+	printf("layer 2 outputs\n");
+	PrintArray2D(n->Ox);
+	return;
+}
+	
+
+	
+
 
 void Randomize(Array2D *a)
 {
@@ -81,6 +115,64 @@ void Randomize(Array2D *a)
 	return;
 }
 
+void ArrayMeanSD(Array2D *a, double *mu, double *sd)
+{
+	double mean;
+	double var;
+	double total;
+	double acc;
+	int i;
+	int j;
+
+	total = 0;
+	acc = 0;
+	for(i=0; i < a->ydim; i++) {
+		for(j=0; j < a->xdim; j++) {
+			acc += a->data[i*a->xdim+j];
+			total++;
+		}
+	}
+	mean = acc / total;
+
+	total = 0;
+	acc = 0;
+	for(i=0; i < a->ydim; i++) {
+		for(j=0; j < a->xdim; j++) {
+			acc += ((a->data[i*a->xdim+j] - mean) * (a->data[i*a->xdim+j] - mean));
+			total++;
+		}
+	}
+	var = acc / total;
+
+	*mu = mean;
+	*sd = sqrt(var);
+	return;
+}
+
+void ScaleArray2D(Array2D *a, double mean, double sd)
+{
+	int i;
+	int j;
+	for(i=0; i < a->ydim; i++) {
+		for(j=0; j < a->xdim; j++) {
+			a->data[i*a->xdim+j] = (a->data[i*a->xdim+j] - mean) / sd;
+		}
+	}
+	return;
+}
+
+void UnScaleArray2D(Array2D *a, double mean, double sd)
+{
+	int i;
+	int j;
+	for(i=0; i < a->ydim; i++) {
+		for(j=0; j < a->xdim; j++) {
+			a->data[i*a->xdim+j] = (a->data[i*a->xdim+j]*sd) + mean;
+		}
+	}
+	return;
+}
+
 Net *InitNet(Array2D *x, Array2D *y, double rate, double momentum)
 {
 	Net *n;
@@ -92,6 +184,12 @@ Net *InitNet(Array2D *x, Array2D *y, double rate, double momentum)
 
 	n->x = x;
 	n->y = y;
+
+	ArrayMeanSD(n->x,&n->xmean,&n->xsd);
+	ScaleArray2D(n->x,n->xmean,n->xsd);
+	ArrayMeanSD(n->y,&n->ymean,&n->ysd);
+	//ScaleArray2D(n->y,n->ymean,n->ysd);
+	ScaleArray2D(n->y,n->xmean,n->xsd);
 
 	n->ItoH = MakeArray2D(x->xdim,x->xdim);
 	if(n->ItoH == NULL) {
@@ -348,6 +446,8 @@ int main(int argc, char *argv[])
 	double err;
 	unsigned long size;
 	Net *n;
+	Array2D *temp;
+	Array2D *temp1;
 
 	while((c = getopt(argc,argv,ARGS)) != EOF) {
 		switch(c) {
@@ -458,25 +558,35 @@ int main(int argc, char *argv[])
 		while(err > Error) {
 			for(input=0; input < x->ydim; input++) {
 				FeedForward(input,n,yprime);
+				if(Verbose) {
+					PrintNet(n);
+				}
 				BackPropagation(input,n);
 			}
 			err = GlobalError(n,yprime);
 			if(Verbose) {
+				temp1=CopyArray2D(yprime);
+				UnScaleArray2D(temp1,n->xmean,n->xsd);
+				temp=CopyArray2D(y);
+				UnScaleArray2D(temp,n->xmean,n->xsd);
 				printf("iter: %d, err: %f\n",i,err);
 				for(j=0; j < y->ydim; j++) {
 					for(k=0; k < y->xdim; k++) {
 						printf("%f %f (%f)\n",
-							y->data[j*y->xdim+k],
-							yprime->data[j*yprime->xdim+k],
-							y->data[j*y->xdim+k] - yprime->data[j*yprime->xdim+k]);
+							temp->data[j*y->xdim+k],
+							temp1->data[j*yprime->xdim+k],
+							temp->data[j*y->xdim+k] - temp1->data[j*yprime->xdim+k]);
 					}
 				}
 				printf("\n");
 				fflush(stdout);
+				FreeArray2D(temp);
+				FreeArray2D(temp1);
 			}
 			i++;
 		}
 	}
+
 	if(Tfile[0] != 0) {
 		size = MIOSize(Tfile);
 		d_mio = MIOOpenText(Tfile,"r",size);
@@ -506,6 +616,7 @@ int main(int argc, char *argv[])
 		FreeArray2D(n->x);
 		x = t;
 		n->x = t;
+		ScaleArray2D(n->x,n->xmean,n->xsd);
 		for(input=0; input < t->ydim; input++) {
 			FeedForward(input,n,yprime);
 		}
