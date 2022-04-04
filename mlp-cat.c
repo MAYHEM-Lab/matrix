@@ -26,7 +26,7 @@
  * https://medium.com/@tiago.tmleite/neural-networks-multilayer-perceptron-and-the-backpropagation-algorithm-a5cd5b904fde
  */
 
-#define RAND() drand48()
+#define RAND() (drand48())
 #define SEED(x) srand48(x)
 
 #define ARGS "x:y:TE:R:M:vt:"
@@ -60,10 +60,6 @@ struct net_stc
 	Array2D *Ox; // estimates
 	double rate;
 	double mu;
-	Array2D *prevItoH; // prev delta for back prop
-	Array2D *prevbiastoH; // prev delta for back prop
-	Array2D *prevHtoO; // prev delta for backprop
-	Array2D *prevbiastoO; // prev delta for backprop
 	double xmean;
 	double xsd;
 	double ymean;
@@ -100,7 +96,7 @@ void PrintNet(Net *n)
 
 double Sigmoid(double x)
 {
-	return(1 / (1 + exp(-1*x)));
+	return(1.0 / (1.0 + exp(-1.0*x)));
 }
 
 void Randomize(Array2D *a)
@@ -110,7 +106,7 @@ void Randomize(Array2D *a)
 
 	for(i=0; i < a->ydim; i++) {
 		for(j=0; j < a->xdim; j++) {
-			a->data[i*a->xdim+j] = RAND();
+			a->data[i*a->xdim+j] = (RAND()*2.0)-1.0;
 		}
 	}
 
@@ -155,6 +151,7 @@ void ScaleArray2D(Array2D *a, double mean, double sd)
 {
 	int i;
 	int j;
+	return;
 	for(i=0; i < a->ydim; i++) {
 		for(j=0; j < a->xdim; j++) {
 			a->data[i*a->xdim+j] = (a->data[i*a->xdim+j] - mean) / sd;
@@ -167,6 +164,7 @@ void UnScaleArray2D(Array2D *a, double mean, double sd)
 {
 	int i;
 	int j;
+	return;
 	for(i=0; i < a->ydim; i++) {
 		for(j=0; j < a->xdim; j++) {
 			a->data[i*a->xdim+j] = (a->data[i*a->xdim+j]*sd) + mean;
@@ -216,30 +214,6 @@ Net *InitNet(Array2D *x, Array2D *y, double rate, double momentum)
 		goto out;
 	}
 	Randomize(n->biastoO);
-
-	n->prevItoH = MakeArray2D(x->xdim,x->xdim);
-	if(n->prevItoH == NULL) {
-		goto out;
-	}
-	Randomize(n->prevItoH);
-
-	n->prevHtoO = MakeArray2D(x->xdim,y->xdim);
-	if(n->prevHtoO == NULL) {
-		goto out;
-	}
-	Randomize(n->prevHtoO);
-
-	n->prevbiastoH = MakeArray1D(x->xdim);
-	if(n->prevbiastoH == NULL) {
-		goto out;
-	}
-	Randomize(n->prevbiastoH);
-
-	n->prevbiastoO = MakeArray1D(y->xdim);
-	if(n->prevbiastoO == NULL) {
-		goto out;
-	}
-	Randomize(n->prevbiastoO);
 
 	n->Hx = MakeArray1D(x->xdim);
 	if(n->Hx == NULL) {
@@ -341,8 +315,6 @@ double BackPropagation(int input,
 	double d;
 	double delta;
 	Array2D *out_delta;
-	Array2D *curr_delta;
-	Array1D *curr_bias;
 	double sum;
 	double de_dw;
 
@@ -358,16 +330,6 @@ double BackPropagation(int input,
  	 * Ox is the output
  	 * Hx is the computed output friom each hidden node
  	 */
-	curr_delta = MakeArray2D(n->HtoO->ydim,n->HtoO->xdim);
-	if(curr_delta == NULL) {
-		fprintf(stderr,"Backpropagation no space for output deltas\n");
-		exit(1);
-	}
-	curr_bias = MakeArray1D(n->biastoO->ydim);
-	if(curr_bias == NULL) {
-		fprintf(stderr,"Backpropagation no space for output bias\n");
-		exit(1);
-	}
 	for(node=0; node < n->HtoO->xdim; node++) {
 		delta = -2 * (n->y->data[node*n->y->xdim+input] - n->Ox->data[node]) *
 				n->Ox->data[node] * (1 - n->Ox->data[node]);
@@ -388,24 +350,10 @@ double BackPropagation(int input,
 		n->biastoO->data[node] -= (n->rate * delta);
 	}
 
-	FreeArray2D(n->prevHtoO);
-	n->prevHtoO = curr_delta;
-	FreeArray2D(n->prevbiastoO);
-	n->prevbiastoO = curr_bias;
 
 	/*
  	 * now do the hidden layer
  	 */
-	curr_delta = MakeArray2D(n->ItoH->ydim,n->ItoH->xdim);
-	if(curr_delta == NULL) {
-		fprintf(stderr,"Backpropagation no space for hidden deltas\n");
-		exit(1);
-	}
-	curr_bias = MakeArray1D(n->biastoO->ydim);
-	if(curr_bias == NULL) {
-		fprintf(stderr,"Backpropagation no space for hidden bias\n");
-		exit(1);
-	}
 	for(node=0; node < n->ItoH->xdim; node++) {
 		sum = 0;
 		for(onode=0; onode < n->HtoO->xdim; onode++) {
@@ -428,10 +376,6 @@ double BackPropagation(int input,
 		n->biastoH->data[node] -= n->rate * delta;
 	}
 	FreeArray2D(out_delta);
-	FreeArray2D(n->prevItoH);
-	n->prevItoH = curr_delta;
-	FreeArray2D(n->prevbiastoH);
-	n->prevbiastoH = curr_bias;
 
 	return;
 }
@@ -566,9 +510,11 @@ int main(int argc, char *argv[])
 		while(err > Error) {
 			for(input=0; input < x->ydim; input++) {
 				FeedForward(input,n,yprime);
+				/*
 				if(Verbose) {
 					PrintNet(n);
 				}
+				*/
 				BackPropagation(input,n);
 			}
 			err = GlobalError(n,yprime);
