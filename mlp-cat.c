@@ -48,16 +48,26 @@ double Rate;
 double Momentum;
 int Verbose;
 
+struct layer_stc
+{
+	Array2D *ItoL;		// array of weights on inputs to hidden layer
+	Array2D *biastoL;	// biases to layer
+	Array2D *Ox;		// layer outputs
+};
+
+typedef struct layer_stc LAYER;
+	
+
 struct net_stc
 {
 	Array2D *x;
 	Array2D *y;
-	Array2D *ItoH; // w from input to hidden
-	Array2D *biastoH; // bias hidden
-	Array2D *HtoO; // w from hidden to output
-	Array2D *biastoO; // bias output
-	Array2D *Hx; // hidden outputs (including transfer)
-	Array2D *Ox; // estimates
+	Array1D *Ox;	// final output layer
+	Array2D *HtoO;  // final weights
+	Array1D *biastoO;  // final biases
+	LAYER *layers;  // vector of LAYER structs, 1 for each hidden layer
+	int layer_count;
+	
 	double rate;
 	double mu;
 	double xmean;
@@ -67,29 +77,40 @@ struct net_stc
 };
 typedef struct net_stc Net;
 
+void PrintLayer(LAYER *layer)
+{
+	printf("weights\n");
+	PrintArray2D(layer->ItoL);
+	printf("biases\n");
+	PrintArray2D(layer->biastoL)
+	printf("outputs\n");
+	temp = TransposeArray2D(layer->Ox);
+	PrintArray2D(temp);
+	FreeArray2D(temp);
+	return;
+}
+
 void PrintNet(Net *n)
 {
 	Array2D *temp;
+	int i;
+
 	printf("input vectors\n");
 	PrintArray2D(n->x);
-	printf("layer 1 weights\n");
-	PrintArray2D(n->ItoH);
-	printf("layer 1 biases\n");
-	PrintArray2D(n->biastoH);
-	temp = TransposeArray2D(n->Hx);
-	printf("layer 1 coefficients\n");
-	PrintArray2D(n->Hx);
-	FreeArray2D(temp);
-	printf("layer 2 weights\n");
+
+	for(i=0; i < n->layer_count; i++) {
+		printf("hidden layer %d\n",i);
+		PrintLayer(&(n->layers[i]));
+	}
+
+	printf("final layer\n");
+	printf("weights\n");
 	PrintArray2D(n->HtoO);
-	printf("layer 2 biases\n");
+	printf("biases\n");
 	PrintArray2D(n->biastoO);
-	temp = TransposeArray2D(n->Ox);
-	printf("layer 2 coefficients\n");
-	PrintArray2D(temp);
-	FreeArray2D(temp);
-	printf("layer 2 outputs\n");
+	printf("outputs\n");
 	PrintArray2D(n->Ox);
+	
 	return;
 }
 	
@@ -171,13 +192,36 @@ void UnScaleArray2D(Array2D *a, double mean, double sd)
 	return;
 }
 
-Net *InitNet(Array2D *x, Array2D *y, double rate, double momentum)
+Net *InitNet(Array2D *x, Array2D *y, int layers, double rate, double momentum)
 {
 	Net *n;
+	int i;
 
 	n = (Net *)malloc(sizeof(Net));
 	if(n == NULL) {
-		exit(1);
+		goto out;
+	}
+
+	n->layers = (LAYER *)malloc(layers * sizeof(LAYER));
+	if(n->layers == NULL) {
+		goto out;
+	}
+	n->layer_count = layers;
+	for(i=0; i < n->layer_count; i++) {
+		n->layers[i].ItoL = MakeArray2D(x->xdim,x->xdim);
+		if(n->layers[i].ItoL == NULL) {
+			goto out;
+		}
+		Randomize(n->layers[i].ItoL);
+		n->layers[i].biastoL = MakeArray1D(x->xdim);
+		if(n->layers[i].biastoL == NULL) {
+			goto out;
+		}
+		Randomize(n->layers[i].biastoL);
+		n->layers[i].Ox = MakeArray1D(x->xdim);
+		if(n->layers[i].Ox == NULL) {
+			goto out;
+		}
 	}
 
 	n->x = x;
@@ -189,42 +233,22 @@ Net *InitNet(Array2D *x, Array2D *y, double rate, double momentum)
 	//ScaleArray2D(n->y,n->ymean,n->ysd);
 	//ScaleArray2D(n->y,n->xmean,n->xsd);
 
-	n->ItoH = MakeArray2D(x->xdim,x->xdim);
-	if(n->ItoH == NULL) {
-		goto out;
-	}
-	Randomize(n->ItoH);
-
-	n->HtoO = MakeArray2D(x->xdim,y->xdim);
-	if(n->HtoO == NULL) {
-		goto out;
-	}
-	Randomize(n->HtoO);
-
-	n->biastoH = MakeArray1D(x->xdim);
-	if(n->biastoH == NULL) {
-		goto out;
-	}
-	Randomize(n->biastoH);
-
-	n->biastoO = MakeArray1D(y->xdim);
-	if(n->biastoO == NULL) {
-		goto out;
-	}
-	Randomize(n->biastoO);
-
-	n->Hx = MakeArray1D(x->xdim);
-	if(n->Hx == NULL) {
-		goto out;
-	}
-	n->Hx = MakeArray1D(x->xdim);
-	if(n->Hx == NULL) {
-		goto out;
-	}
 	n->Ox = MakeArray1D(y->xdim);
 	if(n->Ox == NULL) {
 		goto out;
 	}
+
+	n->HtoO = MakeArray2D(x->xdim,y->xdim);
+        if(n->HtoO == NULL) {
+                goto out;
+        }
+        Randomize(n->HtoO);
+
+	n->biastoO = MakeArray1D(y->xdim);
+        if(n->biastoO == NULL) {
+                goto out;
+        }
+	Randomize(n->biastoO);
 
 	n->rate = rate;
 	n->mu = momentum;
@@ -257,43 +281,55 @@ double GlobalError(Net *n, Array2D *yprime)
 	return(sum/2.0);
 }
 
+
+
 void FeedForward(int input, 
 		 Net *n,
 		 Array2D *yprime)
 				
 {
 	int i;
+	int l;
 	int node;
 	double sum;
 
 	/*
- 	 * for the hidden layer
+ 	 * for the hidden layers
  	 * for each node, compute the sum
  	 *
  	 * each row of x is a different input
  	 * each column of weights (ItoH and HtoO) are the weights for a node in a layer
  	 *
  	 */
-	for(node = 0; node < n->ItoH->xdim; node++) {
-		sum = 0;
-		for(i=0; i < n->x->xdim; i++) {
-			sum += (n->x->data[input*n->x->xdim + i] * n->ItoH->data[i*n->ItoH->xdim + node]);
+	for(l=0; l < n->layer_count; l++) {
+		for(node = 0; node < n->layers[l].ItoL->xdim; node++) {
+			sum = 0;
+			if(l == 0) {
+				for(i=0; i < n->x->xdim; i++) {
+					sum += (n->x->data[input*n->x->xdim + i] * n->ItoH->data[i*n->ItoH->xdim + node]);
+				} 
+			} else {
+				for(i=0; i < n->layers[l-1].Ox->xdim; i++) {
+					sum += (n->layers[l-1].Ox->data[i] * n->layers[l].LtoH->data[i*n->layers[l].ItoL->xdim + node]);
+				} 
+			}
+			/*
+			 * for sigmoid
+			 */
+			n->layers[l].Ox->data[node] = Sigmoid(sum + n->layers[l].biastoL->data[node]);
 		}
-		/*
- 		 * for sigmoid
-		 */
-		n->Hx->data[node] = Sigmoid(sum + n->biastoH->data[node]);
 	}
 
 
 	/*
  	 * now the output layer
- 	 * ItoH->xdim is the number of nodes in the hidden layer
+ 	 * ItoL->xdim is the number of nodes in the hidden layer
  	 */
+	l = n->layer_count - 1;
 	for(node = 0; node < n->HtoO->xdim; node++) {
 		sum = 0;
-		for(i=0; i < n->ItoH->xdim; i++) {
-			sum += (n->Hx->data[i] * n->HtoO->data[i*n->HtoO->xdim + node]);
+		for(i=0; i < n->layers[l].ItoL->xdim; i++) {
+			sum += (n->layers[l].Ox->data[i] * n->HtoO->data[i*n->HtoO->xdim + node]);
 		}
 		n->Ox->data[node] = Sigmoid(sum + n->biastoO->data[node]);
 		yprime->data[input*yprime->xdim + node] = n->Ox->data[node];
@@ -307,12 +343,15 @@ double BackPropagation(int input,
 {
 	int i;
 	int j;
+	int l;
 	int node;
 	int inode;
 	int onode;
 	double d;
 	double delta;
 	Array2D *out_delta;
+	Array2D *out_weights;
+	Array2D *new_delta;
 	double sum;
 	double de_dw;
 
@@ -328,6 +367,7 @@ double BackPropagation(int input,
  	 * Ox is the output
  	 * Hx is the computed output friom each hidden node
  	 */
+	l = n->layer_count - 1;
 	for(node=0; node < n->HtoO->xdim; node++) {
 		delta = -2 * (n->y->data[node*n->y->xdim+input] - n->Ox->data[node]) *
 				n->Ox->data[node] * (1 - n->Ox->data[node]);
@@ -341,8 +381,8 @@ double BackPropagation(int input,
 			delta = -CLIP;
 		}
 		out_delta->data[node] = delta;
-		for(inode=0; inode < n->ItoH->xdim; inode++) {
-			de_dw = delta * n->Hx->data[inode];
+		for(inode=0; inode < n->layers[l].ItoL->xdim; inode++) {
+			de_dw = delta * n->layers[l].Ox->data[inode];
 			n->HtoO->data[inode*n->HtoO->xdim + node] -= (n->rate * de_dw);
 		}
 		n->biastoO->data[node] -= (n->rate * delta);
@@ -350,28 +390,43 @@ double BackPropagation(int input,
 
 
 	/*
- 	 * now do the hidden layer
+ 	 * now do the hidden layers
  	 */
-	for(node=0; node < n->ItoH->xdim; node++) {
-		sum = 0;
-		for(onode=0; onode < n->HtoO->xdim; onode++) {
-			sum += (n->HtoO->data[node*n->HtoO->xdim + onode] * out_delta->data[onode]);
+	out_weights = n->HtoO;
+	for(l=n->layer_count-1; i >=0; l--) {
+		new_delta = MakeArray1D(n->layers[l].ItoH->xdim);
+		if(new_delta == NULL) {
+			exit(1);
 		}
-		delta = (sum * n->Hx->data[node] * (1 - n->Hx->data[node]));
-		 /*
-		 * for sigmoid
-		d = (n->y->data[onode] - n->Ox->data[onode]) * n->Ox->data[onode] * sum;
-		*/
-		if(delta > CLIP) {
-			delta = CLIP;
-		} else if (delta < -CLIP) {
-			delta = -CLIP;
+		for(node=0; node < n->layers[l].ItoH->xdim; node++) {
+			sum = 0;
+			for(onode=0; onode < out_weights->xdim; onode++) {
+				sum += (out_weights->data[node*out_weights->xdim + onode] * out_delta->data[onode]);
+			}
+			delta = (sum * n->layers[l].Ox->data[node] * (1 - n->layers[l].Ox->data[node]));
+			new_delta->data[node] = delta;
+			 /*
+			 * for sigmoid
+			d = (n->y->data[onode] - n->Ox->data[onode]) * n->Ox->data[onode] * sum;
+			*/
+			if(delta > CLIP) {
+				delta = CLIP;
+			} else if (delta < -CLIP) {
+				delta = -CLIP;
+			}
+			for(inode=0; inode < n->x->xdim; inode++) {
+				if(l == 0) {
+					de_dw = delta * n->x->data[input*n->x->xdim + inode];
+				} else {
+					de_dw = delta * n->layers[l-1].Ox->data[inode];
+				}
+				n->layers[l].ItoL->data[inode*n->layers[l].ItoL->xdim + node] -= (n->rate * de_dw);
+			}
+			n->layers[l].biastoL->data[node] -= n->rate * delta;
 		}
-		for(inode=0; inode < n->x->xdim; inode++) {
-			de_dw = delta * n->x->data[input*n->x->xdim + inode];
-			n->ItoH->data[inode*n->ItoH->xdim + node] -= (n->rate * de_dw);
-		}
-		n->biastoH->data[node] -= n->rate * delta;
+		out_weights = n->layers[l].ItoL;
+		FreeArray2D(out_delta);
+		out_delta = new_delta;
 	}
 	FreeArray2D(out_delta);
 
