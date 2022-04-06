@@ -26,7 +26,7 @@ LLIB=-L./lapack-3.8.0 -L/usr/local/Cellar/gcc/7.2.0/lib/gcc/7/ -L/usr/lib64/atla
 #LLIB=-L/usr/local/opt/lapack/lib -L /usr/local/opt/openblas/lib -llapacke -llapack -lopenblas
 #CFLAGS=-g -I${MPATH} -I${APATH} -I${BPATH} -I${LPATH} -I${EPATH} -I${DPATH} -I/usr/local/include
 
-all: polyco-test polyco.o mioregress.o mioarray-test mioregress-test regr mioeigen-test pca pcr match-array mlp-regr slp-cat
+all: polyco-test polyco.o mioregress.o mioarray-test mioregress-test regr mioeigen-test pca pcr match-array mlp-regr slp-cat mlp-cat
 
 polyco-test: polyco.c polyco.h
 	${CC} ${CFLAGS} -DSTANDALONE -o polyco-test polyco.c ${LIBS}
@@ -57,6 +57,10 @@ mlp-regr: mlp-regr.c ${APATH}/mioarray.h ${APATH}/mioarray.o
 slp-cat: slp-cat.c ${APATH}/mioarray.h ${APATH}/mioarray.o
 #	${CC} ${CFLAGS} -o regr regr.c mioregress.o ${ALIB} ${LIBS} ${LLIB}
 	${CC} ${CFLAGS} -DUSELAPACK -o slp-cat slp-cat.c ${ALIB} ${LIBS} ${LLIB}
+
+mlp-cat: mlp-cat.c ${APATH}/mioarray.h ${APATH}/mioarray.o
+#	${CC} ${CFLAGS} -o regr regr.c mioregress.o ${ALIB} ${LIBS} ${LLIB}
+	${CC} ${CFLAGS} -DUSELAPACK -o mlp-cat mlp-cat.c ${ALIB} ${LIBS} ${LLIB}
 
 match-array: match-array.c ${APATH}/mioarray.h ${APATH}/mioarray.o
 #	${CC} ${CFLAGS} -o regr regr.c mioregress.o ${ALIB} ${LIBS} ${LLIB}
