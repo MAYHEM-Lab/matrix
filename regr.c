@@ -147,8 +147,8 @@ int main(int argc, char *argv[])
 				yhat += x->data[k*x->xdim+i] *
 					b->data[i*b->xdim+0];
 			}
-			printf("%f %f\n",
-				y->data[k*y->xdim+0], yhat);
+			printf("%f %f (%f)\n",
+				y->data[k*y->xdim+0], yhat, y->data[k*y->xdim+0] - yhat);
 		}
 	}
 					
