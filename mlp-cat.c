@@ -29,11 +29,12 @@
 #define RAND() (drand48())
 #define SEED(x) srand48(x)
 
-#define ARGS "x:y:TE:R:M:vt:"
+#define ARGS "x:y:TE:R:M:vt:H:"
 char *Usage = "usage: mlp-regr -x xfile\n\
 \t-y yfile\n\
 \t-t testfile\n\
 \t-T <training mode>\n\
+\t-H hidden_layers\n\
 \t-E error threshold (training mode)\n\
 \t-R learning rate (training mode)\n\
 \t-M momentum (training mode)\n\
@@ -47,6 +48,7 @@ double Error;
 double Rate;
 double Momentum;
 int Verbose;
+int Hidden;
 
 struct layer_stc
 {
@@ -79,10 +81,11 @@ typedef struct net_stc Net;
 
 void PrintLayer(LAYER *layer)
 {
+	Array2D *temp;
 	printf("weights\n");
 	PrintArray2D(layer->ItoL);
 	printf("biases\n");
-	PrintArray2D(layer->biastoL)
+	PrintArray2D(layer->biastoL);
 	printf("outputs\n");
 	temp = TransposeArray2D(layer->Ox);
 	PrintArray2D(temp);
@@ -306,11 +309,11 @@ void FeedForward(int input,
 			sum = 0;
 			if(l == 0) {
 				for(i=0; i < n->x->xdim; i++) {
-					sum += (n->x->data[input*n->x->xdim + i] * n->ItoH->data[i*n->ItoH->xdim + node]);
+					sum += (n->x->data[input*n->x->xdim + i] * n->layers[l].ItoL->data[i*n->layers[l].ItoL->xdim + node]);
 				} 
 			} else {
 				for(i=0; i < n->layers[l-1].Ox->xdim; i++) {
-					sum += (n->layers[l-1].Ox->data[i] * n->layers[l].LtoH->data[i*n->layers[l].ItoL->xdim + node]);
+					sum += (n->layers[l-1].Ox->data[i] * n->layers[l].ItoL->data[i*n->layers[l].ItoL->xdim + node]);
 				} 
 			}
 			/*
@@ -393,12 +396,12 @@ double BackPropagation(int input,
  	 * now do the hidden layers
  	 */
 	out_weights = n->HtoO;
-	for(l=n->layer_count-1; i >=0; l--) {
-		new_delta = MakeArray1D(n->layers[l].ItoH->xdim);
+	for(l=n->layer_count-1; l >=0; l--) {
+		new_delta = MakeArray1D(n->layers[l].ItoL->xdim);
 		if(new_delta == NULL) {
 			exit(1);
 		}
-		for(node=0; node < n->layers[l].ItoH->xdim; node++) {
+		for(node=0; node < n->layers[l].ItoL->xdim; node++) {
 			sum = 0;
 			for(onode=0; onode < out_weights->xdim; onode++) {
 				sum += (out_weights->data[node*out_weights->xdim + onode] * out_delta->data[onode]);
@@ -455,6 +458,7 @@ int main(int argc, char *argv[])
 	Array2D *temp;
 	Array2D *temp1;
 
+	Hidden = 1;
 	while((c = getopt(argc,argv,ARGS)) != EOF) {
 		switch(c) {
 			case 'x':
@@ -465,6 +469,9 @@ int main(int argc, char *argv[])
 				break;
 			case 'E':
 				Error = atof(optarg);
+				break;
+			case 'H':
+				Hidden = atoi(optarg);
 				break;
 			case 'R':
 				Rate = atof(optarg);
@@ -557,7 +564,7 @@ int main(int argc, char *argv[])
 	}
 
 	if(Training == 1) {
-		n = InitNet(x,y,Rate,Momentum);
+		n = InitNet(x,y,Hidden,Rate,Momentum);
 
 		err = 1000000;
 		i = 0;
