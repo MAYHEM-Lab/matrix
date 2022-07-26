@@ -278,6 +278,13 @@ double GlobalError(Net *n, Array2D *yprime)
 			*/
 			v1 = n->y->data[j*n->y->xdim+i];
 			v2 = yprime->data[j*yprime->xdim + i];
+
+			/*
+ 			 * assume p(1) is p(success) and p(-1) is p(failure) 
+ 			 */
+			if(v1 == -1) {
+				v1 = 0;
+			}
 			sum += ((v1 - v2) * (v1 - v2));
 		}
 	}
@@ -566,10 +573,10 @@ int main(int argc, char *argv[])
 	if(Training == 1) {
 		n = InitNet(x,y,Hidden,Rate,Momentum);
 
-		err = 1000000;
+		err = 100000;
 		i = 0;
 		iter = 0;
-		while((err > Error) && (iter < 100000)) {
+		while((err > Error) && (iter < 1000000)) {
 			for(input=0; input < x->ydim; input++) {
 				FeedForward(input,n,yprime);
 				/*
