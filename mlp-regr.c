@@ -507,9 +507,9 @@ int main(int argc, char *argv[])
 		while((err > Error) && (curr_iter < Iterations)) {
 			for(input=0; input < x->ydim; input++) {
 				FeedForward(input,n,yprime);
-				if(Verbose) {
-					PrintNet(n);
-				}
+//				if(Verbose) {
+//					PrintNet(n);
+//				}
 				BackPropagation(input,n);
 			}
 			err = GlobalError(n,yprime);
