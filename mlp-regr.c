@@ -373,7 +373,7 @@ double BackPropagation(int input,
 	}
 	FreeArray2D(out_delta);
 
-	return;
+	return(0.0);
 }
 
 int main(int argc, char *argv[])

@@ -9,11 +9,6 @@
 
 #include "mioarray.h"
 
-#ifdef USELAPACK
-#include "cblas.h"
-#endif
-
-
 
 Array2D *MakeArray2D(int rows, int cols)
 {
@@ -74,7 +69,7 @@ void PrintArray2D(Array2D *a)
 
 	for(i=0; i < a->ydim; i++)
 	{
-//		fprintf(stdout,"\t[");
+		fprintf(stdout,"\t[");
 		for(j=0; j < a->xdim; j++)
 		{
 			if(j < a->xdim-1)
@@ -83,8 +78,7 @@ void PrintArray2D(Array2D *a)
 			}
 			else
 			{
-//				fprintf(stdout,"%f]\n",a->data[i*a->xdim+j]);
-				fprintf(stdout,"%f\n",a->data[i*a->xdim+j]);
+				fprintf(stdout,"%f]\n",a->data[i*a->xdim+j]);
 			}
 		}
 	}
@@ -150,7 +144,7 @@ double NormArray1D(Array2D *a)
 
 	return(sq);
 }
-
+		
 
 #define EL(a,i,j,r) ((a)[(i)*(r)+(j)])
 
@@ -266,7 +260,7 @@ Array2D *InvertArray2D(Array2D *a)
 				for(j=0; j < c; j++)
 				{
 					EL(new_a,row,j,c) =
-						EL(orig_a,row,j,c) /
+						EL(orig_a,row,j,c) / 
 						   EL(orig_a,pivot,pivot,c);
 					EL(new_inverse,row,j,c) =
 						EL(inverse,row,j,c) /
@@ -280,7 +274,7 @@ Array2D *InvertArray2D(Array2D *a)
 					EL(new_a,row,j,c) =
 						EL(orig_a,row,j,c) - mult *
 							EL(orig_a,pivot,j,c);
-					EL(new_inverse,row,j,c) =
+					EL(new_inverse,row,j,c) = 
 						EL(inverse,row,j,c) - mult *
                                                         EL(inverse,pivot,j,c);
 				}
@@ -399,11 +393,107 @@ Array2D *InvertArray2D(Array2D *a)
 	return(result);
 }
 
-Array1D *OldEigenValueArray2D(Array2D *a)
+Array1D *EigenValueArray2D(Array2D *a)
 {
 	/*
 	 * use DGHERD, DHSEQR, and DHSEIN to compute eigenvector of a
+	 */ 
+	lapack_int info;
+	lapack_int n;
+	lapack_int ilo;
+	lapack_int ihi;
+	lapack_int lda;
+	double *tau;
+	Array2D *wr;
+	double *wi;
+	Array2D *tempa;
+	double *z;
+
+	tempa = CopyArray2D(a);
+	if(tempa == NULL) {
+		return(NULL);
+	}
+
+	n = a->ydim;
+	lda = a->xdim;
+	ilo = 1;
+	ihi = n;
+	tau = Malloc(n*sizeof(double));
+	if(tau == NULL) {
+		FreeArray2D(tempa);
+		return(NULL);
+	}
+
+	/*
+	 * call dgehrd to get Hessenberg in upper triangle
 	 */
+	info = LAPACKE_dgehrd(LAPACK_ROW_MAJOR,
+			      n,ilo,ihi,
+			      tempa->data,lda,
+			      tau);
+
+	if(info < 0) {
+		fprintf(stderr,"lapacke_dgehrd failed: %d\n",
+			info);
+		FreeArray2D(tempa);
+		Free(tau);
+		return(NULL);
+	}
+
+	/*
+	 * get eigenvalues from Schur transformation
+	 */
+	wr = MakeArray1D(a->ydim);
+	if(wr == NULL) {
+		FreeArray2D(tempa);
+		Free(tau);
+		return(NULL);
+	}
+	wi = Malloc(n*sizeof(double));
+	if(wi == NULL) {
+		FreeArray2D(tempa);
+		Free(tau);
+		FreeArray1D(wr);
+		return(NULL);
+	}
+
+	z = (double *)Malloc(n*n*sizeof(double));
+	if(z == NULL) {
+		FreeArray2D(tempa);
+		Free(tau);
+		FreeArray1D(wr);
+		Free(wi);
+		return(NULL);
+	}
+			
+	info = LAPACKE_dhseqr(LAPACK_ROW_MAJOR,
+			      'E','N',n,ilo,ihi,
+			      tempa->data,lda,
+			      wr->data,wi,z,n);
+	if(info < 0) {
+		fprintf(stderr,"lapacke_dhseqr failed: %d\n",
+			info);
+		FreeArray2D(tempa);
+		Free(tau);
+		Free(wi);
+		FreeArray1D(wr);
+		Free(z);
+		return(NULL);
+	}
+
+	FreeArray2D(tempa);
+	Free(tau);
+	Free(wi);
+	Free(z);
+
+	return(wr);
+}
+
+Array2D *EigenVectorArray2D(Array2D *a)
+{
+	/*
+	 * use DGHERD, DHSEQR, and DHSEIN to compute eigenvector of a
+	 */ 
 	lapack_int info;
 	lapack_int n;
 	lapack_int ilo;
@@ -490,7 +580,7 @@ Array1D *OldEigenValueArray2D(Array2D *a)
 		Free(wi);
 		return(NULL);
 	}
-
+			
 	info = LAPACKE_dhseqr(LAPACK_ROW_MAJOR,
 			      'E','N',n,ilo,ihi,
 			      tempa->data,lda,
@@ -619,8 +709,8 @@ Array1D *OldEigenValueArray2D(Array2D *a)
 			}
 		}
 	}
-
-
+				
+		
 	info = LAPACKE_dormhr(LAPACK_ROW_MAJOR,
 				'L','T',eigen->ydim,eigen->xdim,
 				ilo,ihi,
@@ -654,97 +744,6 @@ Array1D *OldEigenValueArray2D(Array2D *a)
 	return(eigen);
 }
 
-	
-
-Array2D *EigenVectorArray2DDriver(int val, Array2D *a)
-{
-	lapack_int info;
-	lapack_int n;
-	lapack_int lda;
-	Array2D *wr;
-	double *wi;
-	Array2D *tempa;
-	Array2D *eigen;
-
-	tempa = CopyArray2D(a);
-	if(tempa == NULL) {
-		return(NULL);
-	}
-
-	n = a->ydim;
-	lda = a->xdim;
-
-	wr = MakeArray2D(n,1);
-	if(wr == NULL) {
-		FreeArray2D(tempa);
-		return(NULL);
-	}
-	wi = Malloc(n*sizeof(double));
-	if(wi == NULL) {
-		FreeArray2D(tempa);
-		Free(wr);
-		return(NULL);
-	}
-
-	/*
-	 * make an array to hold right eigen vectors
-	 */
-	eigen = MakeArray2D(a->ydim,a->xdim);
-	if(eigen == NULL) {
-		FreeArray2D(tempa);
-		Free(wr);
-		Free(wi);
-		return(NULL);
-	}
-
-	info = LAPACKE_dgeev(LAPACK_ROW_MAJOR,
-			     'N',
-			     'V',
-			     n,
-			     tempa->data, 
-			     lda,
-			     wr->data,
-			     wi,
-			     NULL,
-			     eigen->ydim,
-			     eigen->data,
-			     eigen->ydim);
-
-
-	if(info < 0) {
-		fprintf(stderr,
-		"EigenVectorArray2D: couldn't find right eigenvectors; info: %d\n",
-			info);
-		FreeArray2D(tempa);
-		Free(wi);
-		Free(wr);
-		Free(eigen);
-		return(NULL);
-	}
-
-	FreeArray2D(tempa);
-	Free(wi);
-
-	if(val == 1) {
-		FreeArray2D(eigen);
-		return(wr);
-	} else {
-		FreeArray2D(wr);
-		return(eigen);
-	}
-}
-
-Array2D *EigenValueArray2D(Array2D *a) 
-{
-	return(EigenVectorArray2DDriver(1,a));
-}
-
-Array2D *EigenVectorArray2D(Array2D *a)
-{
-	return(EigenVectorArray2DDriver(0,a));
-}
-
-
 #endif
 Array2D *NormalizeRowsArray2D(Array2D *a)
 {
@@ -761,7 +760,7 @@ Array2D *NormalizeRowsArray2D(Array2D *a)
 	for(i=0; i < a->ydim; i++) {
 		acc = 0.0;
 		for(j=0; j < a->xdim; j++) {
-			acc += (a->data[i*a->xdim+j] *
+			acc += (a->data[i*a->xdim+j] * 
 			       a->data[i*a->xdim+j]);
 		}
 		acc = sqrt(acc);
@@ -789,7 +788,7 @@ Array2D *NormalizeColsArray2D(Array2D *a)
 	for(j=0; j < a->xdim; j++) {
 		acc = 0.0;
 		for(i=0; i < a->ydim; i++) {
-			acc += (a->data[i*a->xdim+j] *
+			acc += (a->data[i*a->xdim+j] * 
 			       a->data[i*a->xdim+j]);
 		}
 		acc = sqrt(acc);
@@ -802,132 +801,9 @@ Array2D *NormalizeColsArray2D(Array2D *a)
 	return(result);
 }
 
+	
 
-
-
-
-#ifdef USELAPACK
-Array2D *MultiplyArray2D(Array2D *a, Array2D *b)
-{
-	Array2D *c;	/* result */
-	int i;
-	int j;
-	int k;
-	double acc;
-	int new_r;
-	int new_c;
-	double *data;
-
-#ifdef USELAPACK
-	CBLAS_ORDER order = CblasRowMajor;
-	CBLAS_TRANSPOSE transA = CblasNoTrans;
-	CBLAS_TRANSPOSE transB = CblasNoTrans;
-	int common;
-#endif
-
-
-	if(a->xdim != b->ydim)
-	{
-		return(NULL);
-	}
-
-	new_r = a->ydim;
-	new_c = b->xdim;
-
-	c = MakeArray2D(new_r,new_c);
-	if(c == NULL)
-	{
-		return(NULL);
-	}
-
-	data = c->data;
-
-#ifdef USELAPACK
-/*
- *  cblas_dgemm(order,transA,transB, rowsA, colsB, common ,1.0,A, 
- *             rowsA ,B, common ,0.0,C, rowsA);
- *
- * https://www.ibm.com/support/knowledgecenter/en/SSLTBW_2.3.0/com.ibm.zos.v2r3.cbcpx01/atlasexample1.htm
- */
-	common = a->xdim;
-	cblas_dgemm(order,
-		    transA,transB, 
-		    a->ydim, 
-		    b->xdim, 
-		    common,
-		    1.0,
-		    a->data,
-                    a->xdim,
-                    b->data, 
-		    b->xdim,
-		    0.0,
-		    c->data, 
-		    c->xdim);
-
-#else
-	for(i=0; i < new_r; i++)
-	{
-		for(j=0; j < new_c; j++)
-		{
-			acc = 0.0;
-			for(k=0; k < a->xdim; k++)
-			{
-				acc += (a->data[i*(a->xdim)+k] *
-					b->data[k*(b->xdim)+j]);
-			}
-			data[i*new_c+j] = acc;
-		}
-	}
-#endif
-
-	return(c);
-}
-
-Array2D *MultiplyArray2DAlt(Array2D *a, Array2D *b)
-{
-	Array2D *c;	/* result */
-	int i;
-	int j;
-	int k;
-	double acc;
-	int new_r;
-	int new_c;
-	double *data;
-
-	if(a->xdim != b->ydim)
-	{
-		return(NULL);
-	}
-
-	new_r = a->ydim;
-	new_c = b->xdim;
-
-	c = MakeArray2D(new_r,new_c);
-	if(c == NULL)
-	{
-		return(NULL);
-	}
-
-	data = c->data;
-
-	for(i=0; i < new_r; i++)
-	{
-		for(j=0; j < new_c; j++)
-		{
-			acc = 0.0;
-			for(k=0; k < a->xdim; k++)
-			{
-				acc += (a->data[i*(a->xdim)+k] *
-					b->data[k*(b->xdim)+j]);
-			}
-			data[i*new_c+j] = acc;
-		}
-	}
-
-	return(c);
-}
-
-#else
+	
 
 Array2D *MultiplyArray2D(Array2D *a, Array2D *b)
 {
@@ -940,6 +816,7 @@ Array2D *MultiplyArray2D(Array2D *a, Array2D *b)
 	int new_c;
 	double *data;
 
+
 	if(a->xdim != b->ydim)
 	{
 		return(NULL);
@@ -955,7 +832,6 @@ Array2D *MultiplyArray2D(Array2D *a, Array2D *b)
 	}
 
 	data = c->data;
-
 	for(i=0; i < new_r; i++)
 	{
 		for(j=0; j < new_c; j++)
@@ -972,10 +848,6 @@ Array2D *MultiplyArray2D(Array2D *a, Array2D *b)
 
 	return(c);
 }
-
-#define MultiplyArray2DAlt(a,b) MultiplyArray2D(a,b)
-
-#endif
 
 Array2D *AddArray2D(Array2D *a, Array2D *b)
 {
@@ -1004,7 +876,7 @@ Array2D *AddArray2D(Array2D *a, Array2D *b)
 
 	for(i=0; i < rows; i++) {
 		for(j=0; j < cols; j++) {
-			Sum->data[i*cols+j] =
+			Sum->data[i*cols+j] = 
 				a->data[i*cols+j] +
 				b->data[i*cols+j];
 		}
@@ -1012,7 +884,7 @@ Array2D *AddArray2D(Array2D *a, Array2D *b)
 
 	return(Sum);
 }
-
+			
 Array2D *SubtractArray2D(Array2D *a, Array2D *b)
 {
 	int i;
@@ -1040,7 +912,7 @@ Array2D *SubtractArray2D(Array2D *a, Array2D *b)
 
 	for(i=0; i < rows; i++) {
 		for(j=0; j < cols; j++) {
-			Diff->data[i*cols+j] =
+			Diff->data[i*cols+j] = 
 				a->data[i*cols+j] -
 				b->data[i*cols+j];
 		}
@@ -1120,23 +992,6 @@ int main(int argc, char *argv[])
 		PrintArray2D(e);
 	}
 
-	for(i=0; i < 3; i++)
-	{
-		for(j=0; j < 5; j++)
-		{
-			a->data[i*a->xdim+j] = drand48();
-			b->data[j*b->xdim+i] = drand48();
-		}
-	}
-	FreeArray2D(c);
-	c = MultiplyArray2D(a,b);
-	printf("c:\n");
-	PrintArray2D(c);
-	FreeArray2D(c);
-	c = MultiplyArray2DAlt(a,b);
-	printf("Alt c:\n");
-	PrintArray2D(c);
-
 	FreeArray2D(a);
 	FreeArray2D(b);
 	FreeArray2D(c);
@@ -1148,9 +1003,9 @@ int main(int argc, char *argv[])
 
 #endif
 
+	
 
-
-
+	
 
 
 

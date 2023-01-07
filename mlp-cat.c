@@ -348,7 +348,7 @@ void FeedForward(int input,
 	return;
 }
 
-double BackPropagation(int input,
+void BackPropagation(int input,
 			Net *n)
 {
 	int i;
