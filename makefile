@@ -1,19 +1,21 @@
-CC=gcc
+CC=/opt/homebrew/bin/gcc-12
 MPATH=../mio
 APATH=.
 DPATH=../distributions
 EPATH=../euca-cutils
 #LPATH=./lapack-3.5.0/lapacke/include/
-LPATH=./lapack-3.8.0/LAPACKE/include/
+LPATH=./lapack-3.11.0/LAPACKE/include
+CBPATH=./lapack-3.11.0/CBLAS/include
+BPATH=./lapack-3.11.0/BLAS/include
 #LPATH=/usr/local/opt/lapack/include
 #BPATH=/usr/local/opt/openblas/include
-CFLAGS=-g -I${MPATH} -I${APATH} -I${LPATH} -I${EPATH} -I${DPATH} -I/usr/local/include -I/usr/local/opt/openblas/include/
+#CFLAGS=-g -I${MPATH} -I${APATH} -I${LPATH} -I${EPATH} -I${DPATH} -I/usr/local/include -I/usr/local/opt/openblas/include/
 
 LIBS=${MPATH}/mymalloc.o ${MPATH}/mio.o ${EPATH}/libutils.a -lm ${DPATH}/normal.o
 ALIB=${APATH}/mioarray.o
 
 #centos 7LLIB=-L./lapack-3.8.0 -L/usr/local/Cellar/gcc/7.2.0/lib/gcc/7/ -L/usr/lib64/atlas -llapacke -llapack -ltatlas -lgfortran
-LLIB=-L./lapack-3.8.0 -L/usr/local/Cellar/gcc/7.2.0/lib/gcc/7/ -L/usr/lib64/atlas -llapacke -llapack -ltatlas -lgfortran
+#LLIB=-L./lapack-3.8.0 -L/usr/local/Cellar/gcc/7.2.0/lib/gcc/7/ -L/usr/lib64/atlas -llapacke -llapack -ltatlas -lgfortran
 #LLIB=-llapacke -llapack -lgfortran -L/usr/lib64 -L/usr/lib64/atlas -lsatlas -lblas -lm
 #LLIB=-L./lapack-3.8.0 -L/usr/local/Cellar/gcc/7.2.0/lib/gcc/7/ -L/usr/lib64/atlas -L/usr/lib64 -lcblas -lblas -llapacke -llapack -latlas -lgfortran
 #LLIB=-L./lapack-3.8.0 -L/usr/local/Cellar/gcc/7.2.0/lib/gcc/7/ -llapacke -llapack -lblas -lgfortran
@@ -23,8 +25,8 @@ LLIB=-L./lapack-3.8.0 -L/usr/local/Cellar/gcc/7.2.0/lib/gcc/7/ -L/usr/lib64/atla
 #LLIB=-L./lapack-3.5.0 -L/usr/local/Cellar/gcc/5.3.0/lib/gcc/5/ -llapacke -llapack -lrefblas -lblas -ltmglib -lgfortran
 
 # for OSX, bew install lapack, bew install openblas
-#LLIB=-L/usr/local/opt/lapack/lib -L /usr/local/opt/openblas/lib -llapacke -llapack -lopenblas
-#CFLAGS=-g -I${MPATH} -I${APATH} -I${BPATH} -I${LPATH} -I${EPATH} -I${DPATH} -I/usr/local/include
+LLIB=-L/opt/homebrew/opt/lapack/lib -L /opt/homebrew/opt/openblas/lib -llapacke -llapack -lopenblas
+CFLAGS=-g -I${LPATH} -I${BPATH} -I${CBPATH} -I${MPATH} -I${APATH} -I${BPATH} -I${EPATH} -I${DPATH} -I/usr/local/include
 
 all: polyco-test polyco.o mioregress.o mioarray-test mioregress-test regr mioeigen-test pca pcr match-array mlp-regr slp-cat mlp-cat
 
