@@ -232,8 +232,8 @@ Net *InitNet(Array2D *x, Array2D *y, int layers, double rate, double momentum)
 
 	ArrayMeanSD(n->x,&n->xmean,&n->xsd);
 	ScaleArray2D(n->x,n->xmean,n->xsd);
-	//ArrayMeanSD(n->y,&n->ymean,&n->ysd);
-	//ScaleArray2D(n->y,n->ymean,n->ysd);
+	ArrayMeanSD(n->y,&n->ymean,&n->ysd);
+	ScaleArray2D(n->y,n->ymean,n->ysd);
 	//ScaleArray2D(n->y,n->xmean,n->xsd);
 
 	n->Ox = MakeArray1D(y->xdim);
@@ -272,10 +272,8 @@ double GlobalError(Net *n, Array2D *yprime)
 	double sum = 0;
 	for(i=0; i < n->y->ydim; i++) {
 		for(j=0; j < n->y->ydim; j++) {
-			/*
-			v1 = (n->y->data[j*n->y->xdim+i]*n->xsd)+n->xmean;
-			v2 = (yprime->data[j*yprime->xdim + i]*n->xsd)+n->xmean;
-			*/
+			//v1 = (n->y->data[j*n->y->xdim+i]*n->xsd)+n->xmean;
+			//v2 = (yprime->data[j*yprime->xdim + i]*n->xsd)+n->xmean;
 			v1 = n->y->data[j*n->y->xdim+i];
 			v2 = yprime->data[j*yprime->xdim + i];
 
@@ -589,9 +587,9 @@ int main(int argc, char *argv[])
 			err = GlobalError(n,yprime);
 			if(Verbose) {
 				temp1=CopyArray2D(yprime);
-				//UnScaleArray2D(temp1,n->xmean,n->xsd);
+				UnScaleArray2D(temp1,n->ymean,n->ysd);
 				temp=CopyArray2D(y);
-				//UnScaleArray2D(temp,n->xmean,n->xsd);
+				UnScaleArray2D(temp,n->ymean,n->ysd);
 				printf("iter: %d, err: %f %f\n",i,err,Error);
 				for(j=0; j < y->ydim; j++) {
 					for(k=0; k < y->xdim; k++) {
@@ -640,7 +638,7 @@ int main(int argc, char *argv[])
 		FreeArray2D(n->x);
 		x = t;
 		n->x = t;
-		ScaleArray2D(n->x,n->xmean,n->xsd);
+		//ScaleArray2D(n->x,n->xmean,n->xsd);
 		for(input=0; input < t->ydim; input++) {
 			FeedForward(input,n,yprime);
 		}
