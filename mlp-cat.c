@@ -130,7 +130,7 @@ void Randomize(Array2D *a)
 
 	for(i=0; i < a->ydim; i++) {
 		for(j=0; j < a->xdim; j++) {
-			a->data[i*a->xdim+j] = (RAND()*2.0)-1.0;
+			a->data[i*a->xdim+j] = (2*RAND())-1;
 		}
 	}
 
@@ -230,11 +230,12 @@ Net *InitNet(Array2D *x, Array2D *y, int layers, double rate, double momentum)
 	n->x = x;
 	n->y = y;
 
+#if 0
 	ArrayMeanSD(n->x,&n->xmean,&n->xsd);
 	ScaleArray2D(n->x,n->xmean,n->xsd);
 	ArrayMeanSD(n->y,&n->ymean,&n->ysd);
 	ScaleArray2D(n->y,n->ymean,n->ysd);
-	//ScaleArray2D(n->y,n->xmean,n->xsd);
+#endif
 
 	n->Ox = MakeArray1D(y->xdim);
 	if(n->Ox == NULL) {
@@ -585,12 +586,12 @@ int main(int argc, char *argv[])
 				BackPropagation(input,n);
 			}
 			err = GlobalError(n,yprime);
+			printf("iter: %d, err: %f %f\n",i,err,Error);
 			if(Verbose) {
 				temp1=CopyArray2D(yprime);
-				UnScaleArray2D(temp1,n->ymean,n->ysd);
+				//UnScaleArray2D(temp1,n->ymean,n->ysd);
 				temp=CopyArray2D(y);
-				UnScaleArray2D(temp,n->ymean,n->ysd);
-				printf("iter: %d, err: %f %f\n",i,err,Error);
+				//UnScaleArray2D(temp,n->ymean,n->ysd);
 				for(j=0; j < y->ydim; j++) {
 					for(k=0; k < y->xdim; k++) {
 						printf("%f %f (%f)\n",

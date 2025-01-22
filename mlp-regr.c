@@ -63,6 +63,10 @@ struct net_stc
 	double xsd;
 	double ymean;
 	double ysd;
+	double xmax;
+	double xmin;
+	double ymax;
+	double ymin;
 };
 typedef struct net_stc Net;
 
@@ -103,7 +107,9 @@ void Randomize(Array2D *a)
 
 	for(i=0; i < a->ydim; i++) {
 		for(j=0; j < a->xdim; j++) {
-			a->data[i*a->xdim+j] = RAND();
+		a->data[i*a->xdim+j] = (2*RAND()) -1 ;
+//			a->data[i*a->xdim+j] = RAND();
+			a->data[i*a->xdim+j] = (2*RAND()) - 1;
 		}
 	}
 
@@ -144,6 +150,29 @@ void ArrayMeanSD(Array2D *a, double *mu, double *sd)
 	return;
 }
 
+void ArrayMinMax(Array2D *a, double *min, double *max)
+{
+	double lmin = 99999999999999;
+	double lmax = -99999999999999;
+	int i;
+	int j;
+
+	for(i=0; i < a->ydim; i++) {
+		for(j=0; j < a->xdim; j++) {
+			if(a->data[i*a->xdim+j] < lmin) {
+				lmin = a->data[i*a->xdim+j];
+			}
+			if(a->data[i*a->xdim+j] > lmax) {
+				lmax = a->data[i*a->xdim+j];
+			}
+		}
+	}
+
+	*min = lmin;
+	*max = lmax;
+	return;
+}
+
 void ScaleArray2D(Array2D *a, double mean, double sd)
 {
 	int i;
@@ -151,6 +180,18 @@ void ScaleArray2D(Array2D *a, double mean, double sd)
 	for(i=0; i < a->ydim; i++) {
 		for(j=0; j < a->xdim; j++) {
 			a->data[i*a->xdim+j] = (a->data[i*a->xdim+j] - mean) / sd;
+		}
+	}
+	return;
+}
+
+void ScaleArray2DMinMax(Array2D *a, double min, double max)
+{
+	int i;
+	int j;
+	for(i=0; i < a->ydim; i++) {
+		for(j=0; j < a->xdim; j++) {
+			a->data[i*a->xdim+j] = (a->data[i*a->xdim+j] - min) / (max - min);
 		}
 	}
 	return;
@@ -168,6 +209,17 @@ void UnScaleArray2D(Array2D *a, double mean, double sd)
 	return;
 }
 
+void UnScaleArray2DMinMax(Array2D *a, double min, double max)
+{
+	int i;
+	int j;
+	for(i=0; i < a->ydim; i++) {
+		for(j=0; j < a->xdim; j++) {
+			a->data[i*a->xdim+j] = (a->data[i*a->xdim+j]*(max-min)) + min;
+		}
+	}
+	return;
+}
 Net *InitNet(Array2D *x, Array2D *y, double rate)
 {
 	Net *n;
@@ -183,8 +235,14 @@ Net *InitNet(Array2D *x, Array2D *y, double rate)
 	ArrayMeanSD(n->x,&n->xmean,&n->xsd);
 	ScaleArray2D(n->x,n->xmean,n->xsd);
 	ArrayMeanSD(n->y,&n->ymean,&n->ysd);
-	//ScaleArray2D(n->y,n->ymean,n->ysd);
-	ScaleArray2D(n->y,n->xmean,n->xsd);
+	ScaleArray2D(n->y,n->ymean,n->ysd);
+
+#if 0
+	ArrayMinMax(n->x,&n->xmean,&n->xsd);
+	ScaleArray2DMinMax(n->x,n->xmean,n->xsd);
+	ArrayMinMax(n->y,&n->ymean,&n->ysd);
+	ScaleArray2DMinMax(n->y,n->ymean,n->ysd);
+#endif
 
 	n->ItoH = MakeArray2D(x->xdim,x->xdim);
 	if(n->ItoH == NULL) {
@@ -247,6 +305,7 @@ double GlobalError(Net *n, Array2D *yprime)
 			*/
 			v1 = n->y->data[j*n->y->xdim+i];
 			v2 = yprime->data[j*yprime->xdim + i];
+//printf("y: %f, yprime: %f\n",v1,v2);
 			sum += ((v1 - v2) * (v1 - v2));
 		}
 	}
@@ -287,12 +346,14 @@ void FeedForward(int input,
  	 * now the output layer
  	 * ItoH->xdim is the number of nodes in the hidden layer
  	 */
-	for(node = 0; node < n->HtoO->xdim; node++) {
+//	for(node = 0; node < n->HtoO->xdim; node++) {
+	for(node = 0; node < n->ItoH->xdim; node++) {
 		sum = 0;
 		for(i=0; i < n->ItoH->xdim; i++) {
 			sum += (n->Hx->data[i] * n->HtoO->data[i*n->HtoO->xdim + node]);
 		}
 		n->Ox->data[node] = sum + n->biastoO->data[node];
+//printf("sum: %f, bias: %f\n",sum,n->biastoO->data[node]);
 		yprime->data[input*yprime->xdim + node] = n->Ox->data[node];
 	}
 
@@ -513,12 +574,13 @@ int main(int argc, char *argv[])
 				BackPropagation(input,n);
 			}
 			err = GlobalError(n,yprime);
+			printf("iter: %d, err: %f %f\n",i,err,Error);
 			if(Verbose) {
+#if 0
 				temp1=CopyArray2D(yprime);
-				UnScaleArray2D(temp1,n->xmean,n->xsd);
+				UnScaleArray2D(temp1,n->ymean,n->ysd);
 				temp=CopyArray2D(y);
-				UnScaleArray2D(temp,n->xmean,n->xsd);
-				printf("iter: %d, err: %f %f\n",i,err,Error);
+				UnScaleArray2D(temp,n->ymean,n->ysd);
 				for(j=0; j < y->ydim; j++) {
 					for(k=0; k < y->xdim; k++) {
 						printf("%f %f (%f)\n",
@@ -531,6 +593,7 @@ int main(int argc, char *argv[])
 				fflush(stdout);
 				FreeArray2D(temp);
 				FreeArray2D(temp1);
+#endif
 			}
 			i++;
 			curr_iter++;
@@ -570,7 +633,7 @@ int main(int argc, char *argv[])
 		for(input=0; input < t->ydim; input++) {
 			FeedForward(input,n,yprime);
 		}
-		UnScaleArray2D(yprime,n->xmean,n->xsd);
+		UnScaleArray2D(yprime,n->ymean,n->ysd);
 		for(i=0;i < yprime->ydim; i++) {
 			for(j=0; j < n->y->xdim; j++) {
 				printf("%f ",yprime->data[yprime->xdim*i+j]);
