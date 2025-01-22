@@ -1,4 +1,4 @@
-CC=/opt/homebrew/bin/gcc-12
+CC=gcc
 MPATH=../mio
 APATH=.
 DPATH=../distributions
@@ -26,7 +26,7 @@ ALIB=${APATH}/mioarray.o
 
 # for OSX, bew install lapack, bew install openblas
 LLIB=-L/opt/homebrew/opt/lapack/lib -L /opt/homebrew/opt/openblas/lib -llapacke -llapack -lopenblas
-CFLAGS=-g -I${LPATH} -I${BPATH} -I${CBPATH} -I${MPATH} -I${APATH} -I${BPATH} -I${EPATH} -I${DPATH} -I/usr/local/include
+CFLAGS=-DUSELAPACK -g -I${LPATH} -I${BPATH} -I${CBPATH} -I${MPATH} -I${APATH} -I${BPATH} -I${EPATH} -I${DPATH} -I/usr/local/include
 
 all: polyco-test polyco.o mioregress.o mioarray-test mioregress-test regr mioeigen-test pca pcr match-array mlp-regr slp-cat mlp-cat
 
