@@ -72,6 +72,10 @@ pca: pca.c ${APATH}/mioarray.h ${APATH}/mioarray.o
 #	${CC} ${CFLAGS} -DSTANDALONE -o pca pca.c ${ALIB} ${LIBS} ${LLIB}
 	${CC} ${CFLAGS} -DSTANDALONE -DUSELAPACK -o pca pca.c ${ALIB} ${LIBS} ${LLIB}
 
+pls: pls.c ${APATH}/mioarray.h ${APATH}/mioarray.o mioregress.h mioregress.o
+#	${CC} ${CFLAGS} -DSTANDALONE -o pca pca.c ${ALIB} ${LIBS} ${LLIB}
+	${CC} ${CFLAGS} -DSTANDALONE -DUSELAPACK -o pls pls.c mioregress.o ${ALIB} ${LIBS} ${LLIB}
+
 pcr: pcr.c ${APATH}/mioarray.h ${APATH}/mioarray.o mioregress.o mioregress.h
 #	${CC} ${CFLAGS} -DSTANDALONE -o pcr pcr.c mioregress.o ${ALIB} ${LIBS} ${LLIB}
 	${CC} ${CFLAGS} -DSTANDALONE -DUSELAPACK -o pcr pcr.c mioregress.o ${ALIB} ${LIBS} ${LLIB}

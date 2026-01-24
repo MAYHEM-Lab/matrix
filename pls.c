@@ -4,6 +4,7 @@
 #include <string.h>
 #include <math.h>
 
+#include "mioarray.h"
 #include "mioregress.h"
 #include "redblack.h"
 
