@@ -4,8 +4,10 @@ APATH=.
 DPATH=../distributions
 EPATH=../euca-cutils
 #LPATH=./lapack-3.5.0/lapacke/include/
-LPATH=./lapack-3.11.0/LAPACKE/include
-CBPATH=./lapack-3.11.0/CBLAS/include
+#LPATH=./lapack-3.11.0/LAPACKE/include
+LPATH=/opt/homebrew/opt/openblas/include
+#CBPATH=./lapack-3.11.0/CBLAS/include
+CBPATH=-I/opt/homebrew/opt/openblas/include
 BPATH=./lapack-3.11.0/BLAS/include
 #LPATH=/usr/local/opt/lapack/include
 #BPATH=/usr/local/opt/openblas/include
@@ -25,8 +27,9 @@ ALIB=${APATH}/mioarray.o
 #LLIB=-L./lapack-3.5.0 -L/usr/local/Cellar/gcc/5.3.0/lib/gcc/5/ -llapacke -llapack -lrefblas -lblas -ltmglib -lgfortran
 
 # for OSX, bew install lapack, bew install openblas
-LLIB=-L/opt/homebrew/opt/lapack/lib -L /opt/homebrew/opt/openblas/lib -llapacke -llapack -lopenblas
-CFLAGS=-DUSELAPACK -g -I${LPATH} -I${BPATH} -I${CBPATH} -I${MPATH} -I${APATH} -I${BPATH} -I${EPATH} -I${DPATH} -I/usr/local/include
+LLIB=-L/opt/homebrew/lib -L/opt/homebrew/opt/lapack/lib -L/opt/homebrew/opt/openblas/lib -llapacke -llapack -lopenblas
+#LLIB=-L/opt/homebrew/opt/lapack/lib -L /opt/homebrew/opt/openblas/lib -llapacke -llapack -lopenblas
+CFLAGS=-DUSELAPACK -g -I/opt/homebrew/include -I${LPATH} -I${BPATH} -I${CBPATH} -I${MPATH} -I${APATH} -I${BPATH} -I${EPATH} -I${DPATH} -I/usr/local/include
 
 all: polyco-test polyco.o mioregress.o mioarray-test mioregress-test regr mioeigen-test pca pcr match-array mlp-regr slp-cat mlp-cat
 
