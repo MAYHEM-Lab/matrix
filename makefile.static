@@ -28,11 +28,12 @@ ALIB=${APATH}/mioarray.o
 
 # for OSX, bew install lapack, bew install openblas
 #LLIB=-L/opt/homebrew/lib -L/opt/homebrew/opt/lapack/lib -L/opt/homebrew/opt/openblas/lib -llapacke -llapack -lopenblas
-LLIB=-L/usr/local/lapack-static/lib -Wl,-Bstatic -Wl,--start-group -llapacke -llapack -lopenblas -lgfortran -Wl,--end-group -Wl,-Bdynamic -lpthread
-CFLAGS=-static -DUSELAPACK -g -Wl,-Bstatic -I${LPATH} -I${BPATH} -I${CBPATH} -I${MPATH} -I${APATH} -I${BPATH} -I${EPATH} -I${DPATH} -I/usr/local/include
+#LLIB=-static -L/usr/local/lapack-static/lib -Wl,--start-group -Wl,--no-dynamic-linker -llapacke -llapack -lopenblas -lgfortran -Wl,--end-group -Wl,-Bdynamic -lpthread
+LLIB=-static -L/usr/local/lapack-static/lib -Wl,--no-dynamic-linker -no-pie -Wl,-Bstatic -Wl,--as-needed -llapacke -llapack -lopenblas -lgfortran -lpthread
+CFLAGS=-pipe -fno-plt -static -DUSELAPACK -g -Wl,-Bstatic -I${LPATH} -I${BPATH} -I${CBPATH} -I${MPATH} -I${APATH} -I${BPATH} -I${EPATH} -I${DPATH} -I/usr/local/include
 LDFLAGS+=-static
 
-all: polyco-test polyco.o mioregress.o mioarray-test mioregress-test regr mioeigen-test pca pcr match-array mlp-regr slp-cat mlp-cat
+all: polyco-test polyco.o mioregress.o mioarray-test mioregress-test regr mioeigen-test pca pcr match-array mlp-regr slp-cat mlp-cat pls
 
 polyco-test: polyco.c polyco.h
 	${CC} ${CFLAGS} -DSTANDALONE -o polyco-test polyco.c ${LIBS}
@@ -93,4 +94,4 @@ mioregress.o: mioregress.c mioregress.h mioarray.h
 #	${CC} ${CFLAGS} -c mioregress.c
 
 clean:
-	rm *.o polyco-test mioregress-test mioarray-test
+	rm *.o polyco-test mioregress-test mioarray-test pcr pls
