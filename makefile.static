@@ -1,4 +1,4 @@
-CC=musl-gcc
+CC=gcc
 MPATH=../mio
 APATH=.
 DPATH=../distributions
@@ -28,7 +28,7 @@ ALIB=${APATH}/mioarray.o
 
 # for OSX, bew install lapack, bew install openblas
 #LLIB=-L/opt/homebrew/lib -L/opt/homebrew/opt/lapack/lib -L/opt/homebrew/opt/openblas/lib -llapacke -llapack -lopenblas
-LLIB=-Wl,-Bstatic -Wl,--start-group -llapacke -llapack -lopenblas -lgfortran -Wl,--end-group -Wl,-Bdynamic -lpthread
+LLIB=-L/usr/local/lapack-static/lib -Wl,-Bstatic -Wl,--start-group -llapacke -llapack -lopenblas -lgfortran -Wl,--end-group -Wl,-Bdynamic -lpthread
 CFLAGS=-static -DUSELAPACK -g -Wl,-Bstatic -I${LPATH} -I${BPATH} -I${CBPATH} -I${MPATH} -I${APATH} -I${BPATH} -I${EPATH} -I${DPATH} -I/usr/local/include
 LDFLAGS+=-static
 
