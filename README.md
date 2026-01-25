@@ -9,7 +9,7 @@ matrix algebra routines and stuff
 
 for static build
 docker run -it --rm alpine:3.19 sh
-apk add git
+apk add git opensshclient
 git clone --depth 1 https://github.com/Reference-LAPACK/lapack.git
 cd lapack
 cmake -S . -B build \
@@ -25,3 +25,4 @@ cmake -S . -B build \
 cmake --build build -j"$(nproc)"
 cmake --install build
 
+/usr/bin/scp
