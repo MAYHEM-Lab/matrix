@@ -297,7 +297,7 @@ double GlobalError(Net *n, Array2D *yprime)
 	double v2;
 
 	double sum = 0;
-	for(i=0; i < n->y->ydim; i++) {
+	for(i=0; i < n->y->xdim; i++) {
 		for(j=0; j < n->y->ydim; j++) {
 			/*
 			v1 = (n->y->data[j*n->y->xdim+i]*n->xsd)+n->xmean;
@@ -354,6 +354,7 @@ void FeedForward(int input,
 		}
 		n->Ox->data[node] = sum + n->biastoO->data[node];
 //printf("sum: %f, bias: %f\n",sum,n->biastoO->data[node]);
+//printf("yprime: %d %d\n",input,node);
 		yprime->data[input*yprime->xdim + node] = n->Ox->data[node];
 	}
 
@@ -543,7 +544,7 @@ int main(int argc, char *argv[])
 
 	x = MakeArray2DFromMIO(xmio);
 	y = MakeArray2DFromMIO(ymio);
-	yprime = MakeArray2D(y->ydim,y->xdim);
+	yprime = MakeArray2D(y->ydim,x->xdim);
 
 	if(x == NULL) {
 		fprintf(stderr,"no space for x array\n");
