@@ -7,10 +7,10 @@
 #include "mioregress.h"
 
 #define DEFAULT_RATE (0.01)
-#define DEFAULT_MOMENTUM (0.1)
+#define DEFAULT_MOMENTUM (0.01)
 #define DEFAULT_ERR (0.1)
 
-#define CLIP 10
+#define CLIP 1
 
 /*
  * single-hidden layer version of multi-layer perceptron
@@ -289,6 +289,29 @@ out:
 	exit(1);
 }
 
+double GlobalErrorOld(Net *n, Array2D *yprime)
+{
+	int i;
+	int j;
+	double v1;
+	double v2;
+
+	double sum = 0;
+	for(i=0; i < n->x->xdim; i++) {
+		for(j=0; j < n->y->ydim; j++) {
+			/*
+			v1 = (n->y->data[j*n->y->xdim+i]*n->xsd)+n->xmean;
+			v2 = (yprime->data[j*yprime->xdim + i]*n->xsd)+n->xmean;
+			*/
+			v1 = n->y->data[j*n->y->xdim+0];
+			v2 = yprime->data[j*yprime->xdim + i];
+printf("y: %f, yprime[%d %d]: %f\n",v1,j,i,v2);
+			sum += ((v1 - v2) * (v1 - v2));
+		}
+	}
+	return(sum/2.0);
+}
+
 double GlobalError(Net *n, Array2D *yprime)
 {
 	int i;
@@ -297,21 +320,18 @@ double GlobalError(Net *n, Array2D *yprime)
 	double v2;
 
 	double sum = 0;
-	for(i=0; i < n->y->xdim; i++) {
-		for(j=0; j < n->y->ydim; j++) {
-			/*
-			v1 = (n->y->data[j*n->y->xdim+i]*n->xsd)+n->xmean;
-			v2 = (yprime->data[j*yprime->xdim + i]*n->xsd)+n->xmean;
-			*/
-			v1 = n->y->data[j*n->y->xdim+i];
-			v2 = yprime->data[j*yprime->xdim + i];
-//printf("y: %f, yprime: %f\n",v1,v2);
-			sum += ((v1 - v2) * (v1 - v2));
-		}
+	for(j=0; j < n->y->ydim; j++) {
+		/*
+		v1 = (n->y->data[j*n->y->xdim+i]*n->xsd)+n->xmean;
+		v2 = (yprime->data[j*yprime->xdim + i]*n->xsd)+n->xmean;
+		*/
+		v1 = n->y->data[j*n->y->xdim+0];
+		v2 = yprime->data[j*yprime->xdim + 0];
+//printf("y: %f, yprime[%d]: %f\n",v1,j,v2);
+		sum += ((v1 - v2) * (v1 - v2));
 	}
 	return(sum/2.0);
 }
-
 void FeedForward(int input, 
 		 Net *n,
 		 Array2D *yprime)
