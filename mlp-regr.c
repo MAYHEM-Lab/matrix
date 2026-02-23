@@ -339,6 +339,7 @@ void FeedForward(int input,
 				
 {
 	int i;
+	int k;
 	int node;
 	double sum;
 
@@ -367,8 +368,7 @@ void FeedForward(int input,
  	 * now the output layer
  	 * ItoH->xdim is the number of nodes in the hidden layer
  	 */
-//	for(node = 0; node < n->HtoO->xdim; node++) {
-	for(node = 0; node < n->ItoH->xdim; node++) {
+	for(node = 0; node < n->HtoO->xdim; node++) {
 		sum = 0;
 		for(i=0; i < n->ItoH->xdim; i++) {
 			sum += (n->Hx->data[i] * n->HtoO->data[i*n->HtoO->xdim + node]);
@@ -376,6 +376,7 @@ void FeedForward(int input,
 		n->Ox->data[node] = sum + n->biastoO->data[node];
 //printf("sum: %f, bias: %f\n",sum,n->biastoO->data[node]);
 //printf("yprime: %d %d\n",input,node);
+		// there is one node per predicted value in yprime
 		yprime->data[input*yprime->xdim + node] = n->Ox->data[node];
 	}
 
@@ -409,7 +410,9 @@ double BackPropagation(int input,
  	 * Hx is the computed output friom each hidden node
  	 */
 	for(node=0; node < n->HtoO->xdim; node++) {
-		delta = -2 * (n->y->data[node*n->y->xdim+input] - n->Ox->data[node]);
+		// there is one node per predicted value of y
+		// input is the index into the training set
+		delta = -2 * (n->y->data[input*n->y->xdim+node] - n->Ox->data[node]);
 		/*
  		 * for sigmoid
 		delta = d * n->Ox->data[node] * (1.0 - n->Ox->data[node]);
@@ -597,6 +600,7 @@ int main(int argc, char *argv[])
 			}
 			err = GlobalError(n,yprime);
 			printf("iter: %d, err: %f %f\n",i,err,Error);
+			fflush(stdout);
 			if(Verbose) {
 #if 0
 				temp1=CopyArray2D(yprime);
