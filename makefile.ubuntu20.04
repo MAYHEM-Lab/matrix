@@ -1,3 +1,4 @@
+#apt install     liblapack-dev     liblapacke-dev     libblas-dev     libopenblas-dev     libblacs-dev     libscalapack-mpi-dev     gfortran     build-essential
 CC=gcc
 MPATH=../mio
 APATH=.
