@@ -6,8 +6,8 @@
 
 #include "mioregress.h"
 
-#define DEFAULT_RATE (0.01)
-#define DEFAULT_MOMENTUM (0.01)
+#define DEFAULT_RATE (0.0001)
+#define DEFAULT_MOMENTUM (0.0001)
 #define DEFAULT_ERR (0.1)
 
 #define CLIP 1
@@ -289,30 +289,31 @@ out:
 	exit(1);
 }
 
-double GlobalErrorOld(Net *n, Array2D *yprime)
+double GlobalError(Net *n, Array2D *yprime)
 {
 	int i;
 	int j;
+	int k;
 	double v1;
 	double v2;
 
 	double sum = 0;
-	for(i=0; i < n->x->xdim; i++) {
-		for(j=0; j < n->y->ydim; j++) {
+	for(i=0; i < n->y->xdim; i++) { // for all features in y vector
+		for(j=0; j < n->y->ydim; j++) { // for all training examples
 			/*
 			v1 = (n->y->data[j*n->y->xdim+i]*n->xsd)+n->xmean;
 			v2 = (yprime->data[j*yprime->xdim + i]*n->xsd)+n->xmean;
 			*/
-			v1 = n->y->data[j*n->y->xdim+0];
+			v1 = n->y->data[j*n->y->xdim+i];
 			v2 = yprime->data[j*yprime->xdim + i];
-printf("y: %f, yprime[%d %d]: %f\n",v1,j,i,v2);
+//printf("y: %f, yprime[%d %d]: %f sqerr: %f\n",v1,j,i,v2, (v1 - v2) * (v1 - v2));
 			sum += ((v1 - v2) * (v1 - v2));
 		}
 	}
 	return(sum/2.0);
 }
 
-double GlobalError(Net *n, Array2D *yprime)
+double GlobalErrorNew(Net *n, Array2D *yprime)
 {
 	int i;
 	int j;
@@ -564,7 +565,7 @@ int main(int argc, char *argv[])
 
 	x = MakeArray2DFromMIO(xmio);
 	y = MakeArray2DFromMIO(ymio);
-	yprime = MakeArray2D(y->ydim,x->xdim);
+	yprime = MakeArray2D(y->ydim,y->xdim);
 
 	if(x == NULL) {
 		fprintf(stderr,"no space for x array\n");
